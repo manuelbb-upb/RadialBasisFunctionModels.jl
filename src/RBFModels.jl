@@ -3,7 +3,7 @@ module RBFModels #src
 export RBFInterpolationModel #src
 export Multiquadric, InverseMultiquadric, Gaussian, Cubic, ThinPlateSpline # src
 
-using DynamicPolynomials  # src
+using DynamicPolynomials, StaticPolynomials  # src
 using ThreadSafeDicts # src
 using Memoize: @memoize # src 
 using StaticArrays # src
@@ -206,10 +206,10 @@ polynomials of degree at most `d`.
 """
 @memoize ThreadSafeDict function canonical_basis( n :: Int, d :: Int )
     @polyvar Xvar[1 : n]
-    basis = Monomial[]  # list of basis polynomials
+    basis = StaticPolynomials.Polynomial[]  # list of basis polynomials
     for d̄ = 0 : d 
         for multi_exponent ∈ non_negative_solutions( d̄, n )
-            push!( basis, prod( Xvar .^ multi_exponent ) )
+            push!( basis, StaticPolynomials.Polynomial( prod( Xvar .^ multi_exponent ) ) )
         end
     end
     return basis
@@ -238,25 +238,18 @@ end
 
 # We want a `coefficients` function and use the following helpers:
 
-function _rbf_matrix( kernels, sites )
+"Evaluate each function in `funcs` on each vector in `sites`, 
+so that each column corresponds to a function."
+function _func_matrix( funcs, sites )
     ## easy way:
-    ## [ kernels[j](sites[i]) for i = eachindex(sites), j = eachindex(kernels) ]
-
+    ##[ funcs[j](sites[i]) for i = eachindex(sites), j = eachindex(funcs) ]
+    
     ## Zygote-compatible
-    Φ = Buffer( sites[1], length(sites), length(kernels) )
-    for (i, k) ∈ enumerate(kernels)
-        Φ[:,i] = [ k( x ) for x ∈ sites ]
+    Φ = Buffer( sites[1], length(sites), length(funcs) )
+    for (i, func) ∈ enumerate(funcs)
+        Φ[:,i] = [ func( x ) for x ∈ sites ]
     end
     return copy(Φ)
-end
-
-function _poly_matrix( polys, sites)
-    ## return [ polys[j](sites[i]) for i = eachindex(sites), j = eachindex(polys) ]
-    P = Buffer( sites[1], length(sites), length(polys) )
-    for (i, p) ∈ enumerate(polys)
-        P[:, i] = [ p( x ) for x ∈ sites ]
-    end
-    return copy(P)
 end
 
 @doc """
@@ -277,24 +270,24 @@ function coefficients( sites, values, kernels, polys )
 
     ## Φ-matrix, columns =̂ basis funcs, rows =̂ sites 
     N = length(sites);
-    Φ = _rbf_matrix( kernels, sites )
+    Φ = _func_matrix( kernels, sites )
     
     ## P-matrix, N × Q
     Q = length(polys)
-    P = _poly_matrix( polys, sites )
-
-    @show size(Φ)
-    @show size(P)
+    P = _func_matrix( polys, sites )
 
     ## system matrix A
-    Z = zeros( Q, Q )
+    Z = zeros( eltype(Φ), Q, Q )
     A = [ Φ  P;
           P' Z ];
 
-    ## rhs
-    F = transpose( hcat( values...) ) # vals to matrix, columns =̂ outputs
+    ## build rhs (in a Zygote friendly way)
+    F = Buffer( values[1], length(values), length(values[1]) ) ## vals to matrix, columns =̂ outputs
+    for (i, val) ∈ enumerate(values)
+        F[i, :] = val
+    end
     RHS = [
-        F ;
+        copy(F) ;
         zeros( eltype(eltype(values)), Q, size(F,2) )
     ];
 
@@ -340,11 +333,11 @@ end
 # The actual data type stores \
 # ~~the (center) sites and data labels~~ \
 # the coefficients and a (vector of) radial and polynomial basis function(s).
-struct RBFInterpolationModel{S,F} # where{S<:Val, F<:AbstractFloat}
+struct RBFInterpolationModel{S,F}
     w :: Union{SMatrix{<:Int, <:Int, F, <:Int}, Matrix{F}}    # RBF weight matrix
     λ :: Union{SMatrix{<:Int, <:Int, F, <:Int}, Matrix{F}}    # polynomial coefficient matrix
     kernels :: Vector{<:ShiftedKernel}   # vector of RBF basis functions 
-    polys :: Vector{<:DynamicPolynomials.AbstractPolynomialLike} # polynomial basis functions
+    polys :: Vector # polynomial basis functions
 
     num_vars :: Int
     num_outputs :: Int
@@ -353,7 +346,8 @@ struct RBFInterpolationModel{S,F} # where{S<:Val, F<:AbstractFloat}
         Sites :: Vector{ VecTypeS },
         Values :: Vector{ VecTypeV },
         φ :: Union{RadialFunction,Vector{<:RadialFunction}},
-        poly_deg :: Int,
+        poly_deg :: Int;
+        static_arrays ::Union{Bool, Nothing} = nothing
         ) where { VecTypeS, VecTypeV }
 
         ## data integrity checks
@@ -370,10 +364,12 @@ struct RBFInterpolationModel{S,F} # where{S<:Val, F<:AbstractFloat}
         dtype = promote_type( TypeS, TypeV, Float16 )
 
         ## use static arrays only if matrices are not big
-        use_static = num_vars <= 10 && num_outputs <= 10
+        if isnothing(static_arrays)
+            static_arrays = (num_vars <= 10 && num_outputs <= 10)
+        end
 
-        NewVecTypeS = use_static ? SVector{ num_vars, dtype } : Vector{dtype}
-        NewVecTypeV = use_static ? SVector{ num_outputs, dtype } : Vector{dtype}
+        NewVecTypeS = static_arrays ? SVector{ num_vars, dtype } : Vector{dtype}
+        NewVecTypeV = static_arrays ? SVector{ num_outputs, dtype } : Vector{dtype}
         sites = convert_list_of_vecs( NewVecTypeS, Sites )
         values = convert_list_of_vecs( NewVecTypeV, Values )
         
@@ -382,20 +378,20 @@ struct RBFInterpolationModel{S,F} # where{S<:Val, F<:AbstractFloat}
 
         w, λ = coefficients( sites, values, kernels, polys )
         
-        new{use_static, dtype}( w, λ, kernels, polys, num_vars, num_outputs)
+        new{static_arrays, dtype}( w, λ, kernels, polys, num_vars, num_outputs)
     end
 end
 
 "Evaluate `m` at vector `x`"
 function (m :: RBFInterpolationModel{false,F} where F)( x :: Union{Vector, SVector} )
-    vec( _rbf_matrix( m.kernels, [x,] ) * m.w + _poly_matrix( m.polys, [x,] ) ) * m.λ
+    vec( _func_matrix( m.kernels, [x,] ) * m.w .+ _func_matrix( m.polys, [x,] )  * m.λ )
 end
 
 "Evaluate `m` at vector `x`, using size information."
 function (m :: RBFInterpolationModel{true,F} where F)( x :: Union{Vector, SVector} )
     vec( 
-        SizedMatrix{ 1, length(m.kernels) }(_rbf_matrix( m.kernels, [x,] )) * m.w +
-        SizedMatrix{ 1, length(m.polys) }(_poly_matrix( m.polys, [x,] ) ) * m.λ 
+        SizedMatrix{ 1, length(m.kernels) }(_func_matrix( m.kernels, [x,] )) * m.w .+
+        SizedMatrix{ 1, length(m.polys) }(_func_matrix( m.polys, [x,] ) ) * m.λ 
     )
 end
 

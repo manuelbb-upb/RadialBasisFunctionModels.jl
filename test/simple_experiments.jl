@@ -4,7 +4,7 @@ using RBFModels
 F = x -> sum( x.^2 )
 
 # Generate data sites (a vector of vectors) …
-sites = [ rand(2) for i = 1 : 5 ]
+sites = [ rand(Float32, 2) for i = 1 : 5 ]
 
 # … and the values (a vector of numbers)
 vals = F.(sites)
@@ -14,4 +14,4 @@ vals = F.(sites)
 
 #%%
 
-rbf = RBFInterpolationModel( sites, vals, φ, 1 )
+rbf = RBFInterpolationModel( sites, vals, φ, 0 ; static_arrays = false)
