@@ -21,6 +21,7 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Module Description" => "RBFModels.md"
     ],
 )
 

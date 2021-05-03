@@ -1,9 +1,15 @@
 module RBFModels #src
 
+export RBFInterpolationModel #src
+export Multiquadric, InverseMultiquadric, Gaussian, Cubic, ThinPlateSpline # src
+
 using DynamicPolynomials  # src
 using ThreadSafeDicts # src
 using Memoize: @memoize # src 
 using StaticArrays # src
+
+using Flux.Zygote: Buffer
+# TODO also set Flux.trainable to make inner parameters trainable
 
 # # Radial Basis Function Models 
 
@@ -171,14 +177,16 @@ cpd_order( φ :: ThinPlateSpline ) = φ.k + 1
 
 Return array of solution vectors [x_1, …, x_n] to the equation
 ``x_1 + … + x_n = d``
-where the variables must are non-negative integers.
+where the variables are non-negative integers.
 """
 function non_negative_solutions( d :: Int, n :: Int )
-    if d == 1
+    if n == 1
         return d
     else
         solutions = [];
         for i = 0 : d
+            # make RHS smaller by and find all solutions of length `n-1`
+            # then concatenate with difference `d-i`
             for shorter_solution ∈ non_negative_solutions( i, n - 1)
                 push!( solutions, [ d-i ; shorter_solution ] )
             end
@@ -198,7 +206,7 @@ polynomials of degree at most `d`.
 """
 @memoize ThreadSafeDict function canonical_basis( n :: Int, d :: Int )
     @polyvar Xvar[1 : n]
-    basis = []  # list of basis polynomials
+    basis = Monomial[]  # list of basis polynomials
     for d̄ = 0 : d 
         for multi_exponent ∈ non_negative_solutions( d̄, n )
             push!( basis, prod( Xvar .^ multi_exponent ) )
@@ -231,11 +239,24 @@ end
 # We want a `coefficients` function and use the following helpers:
 
 function _rbf_matrix( kernels, sites )
-    return [ kernels[j](sites[i]) for i = eachindex(sites), j = eachindex(kernels) ]
+    ## easy way:
+    ## [ kernels[j](sites[i]) for i = eachindex(sites), j = eachindex(kernels) ]
+
+    ## Zygote-compatible
+    Φ = Buffer( sites[1], length(sites), length(kernels) )
+    for (i, k) ∈ enumerate(kernels)
+        Φ[:,i] = [ k( x ) for x ∈ sites ]
+    end
+    return copy(Φ)
 end
 
 function _poly_matrix( polys, sites)
-    return [ polys[j](sites[i]) for i = eachindex(sites), j = eachindex(polys) ]
+    ## return [ polys[j](sites[i]) for i = eachindex(sites), j = eachindex(polys) ]
+    P = Buffer( sites[1], length(sites), length(polys) )
+    for (i, p) ∈ enumerate(polys)
+        P[:, i] = [ p( x ) for x ∈ sites ]
+    end
+    return copy(P)
 end
 
 @doc """
@@ -262,10 +283,13 @@ function coefficients( sites, values, kernels, polys )
     Q = length(polys)
     P = _poly_matrix( polys, sites )
 
+    @show size(Φ)
+    @show size(P)
+
     ## system matrix A
     Z = zeros( Q, Q )
     A = [ Φ  P;
-          Φ' Z ];
+          P' Z ];
 
     ## rhs
     F = transpose( hcat( values...) ) # vals to matrix, columns =̂ outputs
@@ -288,21 +312,20 @@ end
 # outputs if needed.
 
 # First, define some helper functions:
-"""
-    convert_list_of_vecs( vec_elem_type, list_of_vecs )
 
-Return a list of vectors whose elements are taken from `list_of_vecs` but have 
-element type `vec_elem_type`.
-"""
-function convert_list_of_vecs( vec_elem_type :: Type{<:AbstractFloat},
-    list_of_vecs :: Vector{<:Union{Vector{F},SVector{<:Int, F}}} ) where F
-    return [ vec_elem_type.(vec) for vec ∈ list_of_vecs ]
+function convert_list_of_vecs( vec_type :: Type, list_of_vecs :: Vector{<:Union{Vector,SVector}} )
+    return vec_type.(list_of_vecs)
 end
 
-#function convert_list_of_vecs(::Type{F},
-#    list_of_vecs :: Vector{<:Union{Vector{F},SVector{<:Int, F}}} ) where F
-#    return list_of_vecs
-#end
+## allow for providing scalar data
+function convert_list_of_vecs( vec_type :: Type, list_of_vecs :: Vector{<:Real} )
+    return convert_list_of_vecs( vec_type, [ [x,] for x ∈ list_of_vecs ] )
+end
+
+## do nothing if types alreay match
+function convert_list_of_vecs(::Type{F}, list_of_vecs :: Vector{F} ) where F
+    return list_of_vecs
+end
 
 "Return array of `ShiftedKernel`s based on `φ` with centers from `sites`."
 function make_kernels( φ :: RadialFunction, sites :: Union{Vector, SVector} )
@@ -316,44 +339,64 @@ end
 
 # The actual data type stores \
 # ~~the (center) sites and data labels~~ \
-# the coefficients and a (vector of) radial function(s).
-struct RBFInterpolationModel{F}
-    w :: Matrix{F}    # RBF weight matrix
-    λ :: Matrix{F}    # polynomial coefficient matrix
+# the coefficients and a (vector of) radial and polynomial basis function(s).
+struct RBFInterpolationModel{S,F} # where{S<:Val, F<:AbstractFloat}
+    w :: Union{SMatrix{<:Int, <:Int, F, <:Int}, Matrix{F}}    # RBF weight matrix
+    λ :: Union{SMatrix{<:Int, <:Int, F, <:Int}, Matrix{F}}    # polynomial coefficient matrix
     kernels :: Vector{<:ShiftedKernel}   # vector of RBF basis functions 
     polys :: Vector{<:DynamicPolynomials.AbstractPolynomialLike} # polynomial basis functions
 
+    num_vars :: Int
+    num_outputs :: Int
+
     function RBFInterpolationModel(  
-        Sites :: Vector{<:Union{Vector{A},SVector{<:Int, A}}},
-        Vals :: Vector{<:Union{Vector{B},SVector{<:Int, B}}},
+        Sites :: Vector{ VecTypeS },
+        Values :: Vector{ VecTypeV },
         φ :: Union{RadialFunction,Vector{<:RadialFunction}},
         poly_deg :: Int,
-        ) where {A <: Real, B <: Real}
+        ) where { VecTypeS, VecTypeV }
 
         ## data integrity checks
-        @assert length(sites) == length(values) "Provide as many data sites as data labels."
-        @assert !isempty(sites) "Provide at least 1 data site."
-        num_vars = length(sites[1])
-        num_outputs = length(values[1])
-        @assert all( length(s) == num_vars for s ∈ sites ) "All sites must have same dimension."
-        @assert all( length(v) == num_outputs for v ∈ values ) "All values must have same dimension."
+        @assert length(Sites) == length(Values) "Provide as many data sites as data labels."
+        @assert !isempty(Sites) "Provide at least 1 data site."
+        num_vars = length(Sites[1])
+        num_outputs = length(Values[1])
+        @assert all( length(s) == num_vars for s ∈ Sites ) "All sites must have same dimension."
+        @assert all( length(v) == num_outputs for v ∈ Values ) "All values must have same dimension."
         
-        ## use same precision everywhere ( defaults to single-precision )
-        dtype = promote_type( A, B, Float32 )
-        sites = convert_list_of_vecs( dtype, Sites )
-        values = convert_list_of_vecs( dtype, Vals )
+        ## use same precision everywhere ( at least half-precision )
+        TypeS = eltype( VecTypeS )
+        TypeV = eltype( VecTypeV )
+        dtype = promote_type( TypeS, TypeV, Float16 )
+
+        ## use static arrays only if matrices are not big
+        use_static = num_vars <= 10 && num_outputs <= 10
+
+        NewVecTypeS = use_static ? SVector{ num_vars, dtype } : Vector{dtype}
+        NewVecTypeV = use_static ? SVector{ num_outputs, dtype } : Vector{dtype}
+        sites = convert_list_of_vecs( NewVecTypeS, Sites )
+        values = convert_list_of_vecs( NewVecTypeV, Values )
         
         kernels = make_kernels( φ, sites )
         polys = canonical_basis( num_vars, poly_deg )
 
         w, λ = coefficients( sites, values, kernels, polys )
         
-        new{dtype}( w, λ, kernels, polys)
+        new{use_static, dtype}( w, λ, kernels, polys, num_vars, num_outputs)
     end
 end
 
-function (m :: RBFInterpolationModel)( x :: Union{Vector, SVector} )
-    vec( _rbf_matrix( m.kernels, [x,] ) * m.w + _poly_matrix( m.polys, m.λ ) )
+"Evaluate `m` at vector `x`"
+function (m :: RBFInterpolationModel{false,F} where F)( x :: Union{Vector, SVector} )
+    vec( _rbf_matrix( m.kernels, [x,] ) * m.w + _poly_matrix( m.polys, [x,] ) ) * m.λ
+end
+
+"Evaluate `m` at vector `x`, using size information."
+function (m :: RBFInterpolationModel{true,F} where F)( x :: Union{Vector, SVector} )
+    vec( 
+        SizedMatrix{ 1, length(m.kernels) }(_rbf_matrix( m.kernels, [x,] )) * m.w +
+        SizedMatrix{ 1, length(m.polys) }(_poly_matrix( m.polys, [x,] ) ) * m.λ 
+    )
 end
 
 # ## Derivatives 
