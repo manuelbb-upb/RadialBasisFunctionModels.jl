@@ -3,6 +3,12 @@ uuid = "48790e7e-73b2-491a-afa5-62818081adcb"
 authors = ["Manuel Berkemeier"]
 version = "0.1.0"
 
+[deps]
+DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
+Memoize = "c03570c3-d221-55d1-a50c-7939bbd78826"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+ThreadSafeDicts = "4239201d-c60e-5e0a-9702-85d713665ba7"
+
 [compat]
 julia = "1.6"
 

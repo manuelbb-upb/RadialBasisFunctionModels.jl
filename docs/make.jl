@@ -1,6 +1,10 @@
 using RBFModels
 using Documenter
 
+using Literate
+
+Literate.markdown("../src/RBFModels.jl", "docs/src"; documenter = true)
+
 DocMeta.setdocmeta!(RBFModels, :DocTestSetup, :(using RBFModels); recursive=true)
 
 makedocs(;
