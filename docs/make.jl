@@ -3,7 +3,9 @@ using Documenter
 
 using Literate
 
-Literate.markdown("../src/RBFModels.jl", "docs/src"; documenter = true)
+src_path = joinpath( @__DIR__, "..", "src" )
+Literate.markdown(joinpath( src_path, "RBFModels.jl"), "docs/src"; documenter = true)
+#%%
 
 DocMeta.setdocmeta!(RBFModels, :DocTestSetup, :(using RBFModels); recursive=true)
 
