@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Radial Basis Function Models · RBFModels.jl</title><link rel="canonical" href="https://manuelbb-upb.github.io/RBFModels.jl/RBFModels/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">RBFModels.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Radial Basis Function Models</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Radial Basis Function Models</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/manuelbb-upb/RBFModels.jl/blob/master/src/RBFModels.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><pre><code class="language-">using DynamicPolynomials  # src
+using ThreadSafeDicts # src
+using Memoize: @memoize # src
+using StaticArrays # src</code></pre><h1 id="Radial-Basis-Function-Models"><a class="docs-heading-anchor" href="#Radial-Basis-Function-Models">Radial Basis Function Models</a><a id="Radial-Basis-Function-Models-1"></a><a class="docs-heading-anchor-permalink" href="#Radial-Basis-Function-Models" title="Permalink"></a></h1><p>The sub-module <code>RBFModels</code> provides utilities to work with radial basis function [RBF] models. Given <span>$N$</span> data sites <span>$X = \{ x^1, …, x^N \} ⊂ ℝ^n$</span> and values <span>$Y = \{ y^1, …, y^N \} ⊂ ℝ$</span>, an interpolating RBF model <span>$r\colon ℝ^n → ℝ$</span> has the form</p><p class="math-container">\[r(x) = \sum_{i=1}^N w_i φ( \| x - x^i \|_2 ) + p(x),\]</p><p>where <code>p</code> is a multivariate polynomial. The radial function <span>$φ\colon [0, ∞) \to ℝ$</span> defines the RBF and we can solve for the coefficients <span>$w$</span> by solving the interpolation system</p><p class="math-container">\[r( x^i ) \stackrel{!}= y^i \quad \text{for all $i=1,…,N$.}\]</p><p>The function <span>$k(•) = φ(\|•\|_2)$</span> is radially symmetric around the origin. <span>$k$</span> is called the kernel of an RBF.</p><p>We define an abstract super type for radial functions:</p><pre><code class="language-julia">abstract type RadialFunction &lt;: Function end</code></pre><p>Each Type that inherits from <code>RadialFunction</code> should implement an evaluation method:</p><pre><code class="language-julia">(φ :: RadialFunction )( x :: Real ) :: Real = Nothing;</code></pre><p>From an <code>RadialFunction</code> and a vector we can define a shifted kernel function:</p><pre><code class="language-">struct ShiftedKernel &lt;: Function
+    φ :: RadialFunction
+    c :: Union{Vector, SVector}
+end
+
+norm2( vec ) = sqrt(sum( vec.^2 ))
+function (k::ShiftedKernel)( x :: Union{Vector, SVector} )
+    return k.φ( norm2( x .- k.c ) )
+end</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>When we have vector data <span>$Y ⊂ ℝ^k$</span>, e.g. from modelling MIMO functions, then Julia easily allows for multiple columns in the righthand side of the interpolation equation system and we get weight vectors for multiple models, that can be thought of as one vector models <span>$r\colon ℝ^n \to ℝ$</span>.</p></div></div><h2 id="Some-Radial-Functions"><a class="docs-heading-anchor" href="#Some-Radial-Functions">Some Radial Functions</a><a id="Some-Radial-Functions-1"></a><a class="docs-heading-anchor-permalink" href="#Some-Radial-Functions" title="Permalink"></a></h2><p>The <strong>Gaussian</strong> is defined by <span>$φ(ρ) = \exp \left( - (αρ)^2 \right)$</span>, where <span>$α$</span> is a shape parameter to fine-tune the function.</p><pre><code class="language-julia">struct Gaussian &lt;: RadialFunction
+    α :: Real
+
+    Gaussian( α :: Real = 1 ) = begin
+        @assert α &gt; 0 &quot;The shape parameter `α` must be positive.&quot;
+        return new(α)
+    end
+end
+
+function ( φ :: Gaussian )( ρ :: Real )
+    exp( - (φ.α * ρ)^2 )
+end</code></pre><p>The <strong>Multiquadric</strong> is <span>$φ(ρ) = - \sqrt{ 1 + (αρ)^2 }$</span> and also has a positive shape parameter. We can actually generalize it to the following form:</p><pre><code class="language-julia">struct Multiquadric &lt;: RadialFunction
+    α :: Real   # shape parameter
+    β :: Real   # exponent
+
+    Multiquadric(α = 1, β = .5) = begin
+        @assert α &gt; 0 &quot;The shape parameter `α` must be positive.&quot;
+        @assert β % 1 != 0 &quot;The exponent must not be an integer.&quot;
+        @assert β &gt; 0 &quot;The exponent must be positive.&quot;
+        new(α,β)
+    end
+end
+
+function ( φ :: Multiquadric )( ρ :: Real )
+    (-1)^(ceil(Int, φ.β)) * ( 1 + (φ.α * ρ)^2 )^φ.β
+end</code></pre><p>Related is the <strong>Inverse Multiquadric</strong> <span>$φ(ρ) = (1+(αρ)^2)^{-β}$</span> is related:</p><pre><code class="language-julia">struct InverseMultiquadric &lt;: RadialFunction
+    α :: Real
+    β :: Real
+
+    Multiquadric( α = 1, β = .5 ) = begin
+        @assert α &gt; 0 &quot;The shape parameter `α` must be positive.&quot;
+        @assert β &gt; 0 &quot;The exponent must be positive.&quot;
+        new(α, β)
+    end
+end
+
+function ( φ :: InverseMultiquadric )( ρ :: Real )
+   ( 1 + (φ.α * ρ)^2 )^(-φ.β)
+end</code></pre><p>The <strong>Cubic</strong> is <span>$φ(ρ) = ρ^3$</span>. It can also be generalized:</p><pre><code class="language-julia">struct Cubic &lt;: RadialFunction
+    β :: Real
+
+    Cubic( β :: Real = 3 ) = begin
+        @assert β &gt; 0 &quot;The exponent `β` must be positive.&quot;
+        @assert β % 2 != 0 &quot;The exponent `β` must not be an even number.&quot;
+        new(β)
+    end
+end
+
+function ( φ :: Cubic )( ρ :: Real )
+    (-1)^ceil(Int, φ.β/2 ) * ρ^φ.β
+end</code></pre><p>The thin plate spline is usually defined via <span>$φ(ρ) = ρ^2 \log( ρ )$</span>. We provide a generalized version, which defaults to <span>$φ(ρ) = - ρ^4 \log( ρ )$</span>.</p><pre><code class="language-julia">struct ThinPlateSpline &lt;: RadialFunction
+    k :: Int
+
+    ThinPlateSpline( k :: Real = 2 ) = begin
+        @assert k &gt; 0 &amp;&amp; k % 1 == 0 &quot;The parameter `k` must be a positive integer.&quot;
+        new( Int(k) )
+    end
+end
+
+function (φ :: ThinPlateSpline )( ρ :: Real )
+    (-1)^(k+1) * ρ^(2*k) * log( ρ )
+end</code></pre><h2 id="Solving-the-Interpolation-System"><a class="docs-heading-anchor" href="#Solving-the-Interpolation-System">Solving the Interpolation System</a><a id="Solving-the-Interpolation-System-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-the-Interpolation-System" title="Permalink"></a></h2><h3 id="Polynomial-Tail"><a class="docs-heading-anchor" href="#Polynomial-Tail">Polynomial Tail</a><a id="Polynomial-Tail-1"></a><a class="docs-heading-anchor-permalink" href="#Polynomial-Tail" title="Permalink"></a></h3><p>For the interpolation system to be solvable we have to choose the right polynomial space for <span>$p$</span>. Basically, if the RBF Kernel (or the radial function) is <em>conditionally positive definite</em> of order <span>$D$</span> we have to find a polynomial <span>$p$</span> with <span>$\deg p = D-1$</span>.<sup class="footnote-reference"><a id="citeref-wendland" href="#footnote-wendland">[wendland]</a></sup> If the kernel is CPD of order <span>$D=0$</span> we do not have to add an polynomial and can interpolate arbitrary (distinct) data points.</p><pre><code class="language-julia">cpd_order( :: Gaussian ) = 0
+cpd_order( φ :: Multiquadric ) = ceil( Int, φ.β )
+cpd_order( :: InverseMultiquadric ) = 0
+cpd_order( φ :: Cubic ) = ceil( Int, φ.β/2 )
+cpd_order( φ :: ThinPlateSpline ) = φ.k + 1</code></pre><pre class="documenter-example-output">cpd_order (generic function with 5 methods)</pre><p>The dimension of <span>$Π_{d}(ℝ^n)$</span>, the space of <span>$n$</span>-variate polynomials of degree at most <span>$d$</span>, is</p><p class="math-container">\[   Q = \binom{n+d}{n}\]</p><p>which equates to <span>$Q = n+1$</span> for linear and <span>$Q = (n+2)(n+1)/2$</span> for quadratic polynomials. <br/>We need <span>$\{p_j\}_{1 \le j \le Q}$</span>, a basis of <span>$Π_d(ℝ^n)$</span>.</p><p>The canonical basis is <span>$x_1^{α_1} x_2^{α_2} … x_n^{α_n}$</span> with <span>$α_i ≥ 0$</span> and <span>$Σ_i α_i ≤ d$</span>. For <span>$\bar{d} \le d$</span> we can recursively get the non-negative integer solutions for <span>$Σ_i α_i = \bar{d}$</span> with the following function:</p><pre><code class="language-julia">@doc &quot;&quot;&quot;
+    non_negative_solutions( d :: Int, n :: Int)
+
+Return array of solution vectors [x_1, …, x_n] to the equation
+``x_1 + … + x_n = d``
+where the variables must are non-negative integers.
+&quot;&quot;&quot;
+function non_negative_solutions( d :: Int, n :: Int )
+    if d == 1
+        return d
+    else
+        solutions = [];
+        for i = 0 : d
+            for shorter_solution ∈ non_negative_solutions( i, n - 1)
+                push!( solutions, [ d-i ; shorter_solution ] )
+            end
+        end
+        return solutions
+    end
+end</code></pre><pre class="documenter-example-output">Main.ex-RBFModels.non_negative_solutions</pre><p>We use <code>DynamicPolynomials.jl</code> to generate the Polyomials. Furthermore, we employ Memoization (via <code>Memoize.jl</code> and <code>ThreadSafeDicts</code>) to save the result for successive usage.</p><pre><code class="language-">@doc &quot;&quot;&quot;
+    canonical_basis( n:: Int, d :: Int )
+
+Return the canonical basis of the space of `n`-variate
+polynomials of degree at most `d`.
+&quot;&quot;&quot;
+@memoize ThreadSafeDict function canonical_basis( n :: Int, d :: Int )
+    @polyvar Xvar[1 : n]
+    basis = []  # list of basis polynomials
+    for d̄ = 0 : d
+        for multi_exponent ∈ non_negative_solutions( d̄, n )
+            push!( basis, prod( Xvar .^ multi_exponent ) )
+        end
+    end
+    return basis
+end</code></pre><h3 id="The-equation-system"><a class="docs-heading-anchor" href="#The-equation-system">The equation system</a><a id="The-equation-system-1"></a><a class="docs-heading-anchor-permalink" href="#The-equation-system" title="Permalink"></a></h3><p>Set <span>$P = [ p_j(x^i) ] ∈ ℝ^{N × Q}$</span> and <span>$Φ = φ(\| x^i - x^j \|)$</span>. The linear equation system for the coefficients of <span>$r$</span> is</p><p class="math-container">\[    \begin{bmatrix}
+    Φ &amp; P \\
+    P^T &amp; 0_{Q × Q}
+    \end{bmatrix}
+    \begin{bmatrix}
+        w \\
+        λ
+    \end{bmatrix}
+    =
+    \begin{bmatrix}
+    Y
+    \\
+    0_Q
+    \end{bmatrix}.\]</p><p>We want a <code>coefficients</code> function and use the following helpers:</p><pre><code class="language-julia">function _rbf_matrix( kernels, sites )
+    return [ kernels[j](sites[i]) for i = eachindex(sites), j = eachindex(kernels) ]
+end
+
+function _poly_matrix( polys, sites)
+    return [ polys[j](sites[i]) for i = eachindex(sites), j = eachindex(polys) ]
+end
+
+@doc &quot;&quot;&quot;
+    coefficients(sites, values, kernels, polys )
+
+Return the coefficient matrices `w` and `λ` for an rbf model
+``r(x) = Σ_{i=1}^N wᵢ kᵢ(x) + Σ_{j=1}^M λᵢ pᵢ(x)``,
+where ``N`` is the length of `kernels` and ``M``
+is the length of `polys`.
+
+The arguments are
+* an array of data sites `sites` with vector entries from ``ℝ^n``.
+* an array of data values `values` with vector entries from ``ℝ^k``.
+* an array `kernels` of RBF basis functions (of type `ShiftedKernel`)
+* an array `polys` of polynomial basis functions.
+&quot;&quot;&quot;
+function coefficients( sites, values, kernels, polys )
+
+    # Φ-matrix, columns =̂ basis funcs, rows =̂ sites
+    N = length(sites);
+    Φ = _rbf_matrix( kernels, sites )
+
+    # P-matrix, N × Q
+    Q = length(polys)
+    P = _poly_matrix( polys, sites )
+
+    # system matrix A
+    Z = zeros( Q, Q )
+    A = [ Φ  P;
+          Φ&#39; Z ];
+
+    # rhs
+    F = transpose( hcat( values...) ) # vals to matrix, columns =̂ outputs
+    RHS = [
+        F ;
+        zeros( eltype(eltype(values)), Q, size(F,2) )
+    ];
+
+    # solve system
+    coeff = A \ RHS
+
+    # return w and λ
+    return coeff[1 : N, :], coeff[N+1 : end, :]
+end</code></pre><pre class="documenter-example-output">Main.ex-RBFModels.coefficients</pre><h3 id="The-Model-Data-Type"><a class="docs-heading-anchor" href="#The-Model-Data-Type">The Model Data Type</a><a id="The-Model-Data-Type-1"></a><a class="docs-heading-anchor-permalink" href="#The-Model-Data-Type" title="Permalink"></a></h3><p>We now have all ingredients to define the model type. We allow for vector valued data sites and determine multiple outputs if needed.</p><p>First, define some helper functions:</p><pre><code class="language-">&quot;&quot;&quot;
+    convert_list_of_vecs( vec_elem_type, list_of_vecs )
+
+Return a list of vectors whose elements are taken from `list_of_vecs` but have
+element type `vec_elem_type`.
+&quot;&quot;&quot;
+function convert_list_of_vecs( vec_elem_type :: Type{&lt;:AbstractFloat},
+    list_of_vecs :: Vector{&lt;:Union{Vector{F},SVector{&lt;:Int, F}}} ) where F
+    return [ vec_elem_type.(vec) for vec ∈ list_of_vecs ]
+end
+
+#function convert_list_of_vecs(::Type{F},</code></pre><p>list<em>of</em>vecs :: Vector{&lt;:Union{Vector{F},SVector{&lt;:Int, F}}} ) where F    return list<em>of</em>vecs</p><pre><code class="language-">#end
+
+&quot;Return array of `ShiftedKernel`s based on `φ` with centers from `sites`.&quot;
+function make_kernels( φ :: RadialFunction, sites :: Union{Vector, SVector} )
+    return [ ShiftedKernel(φ, c) for c ∈ sites ]
+end
+
+&quot;Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `sites`.&quot;
+function make_kernels( φ :: Vector{RadialFunction}, sites :: Union{Vector, SVector} )
+    return [ ShiftedKernel(φ, c) for c ∈ sites ]
+end</code></pre><p>The actual data type stores <br/>~~the (center) sites and data labels~~ <br/>the coefficients and a (vector of) radial function(s).</p><pre><code class="language-">struct RBFInterpolationModel{F}
+    w :: Matrix{F}    # RBF weight matrix
+    λ :: Matrix{F}    # polynomial coefficient matrix
+    kernels :: Vector{&lt;:ShiftedKernel}   # vector of RBF basis functions
+    polys :: Vector{&lt;:DynamicPolynomials.AbstractPolynomialLike} # polynomial basis functions
+
+    function RBFInterpolationModel(
+        Sites :: Vector{&lt;:Union{Vector{A},SVector{&lt;:Int, A}}},
+        Vals :: Vector{&lt;:Union{Vector{B},SVector{&lt;:Int, B}}},
+        φ :: Union{RadialFunction,Vector{&lt;:RadialFunction}},
+        poly_deg :: Int,
+        ) where {A &lt;: Real, B &lt;: Real}
+
+        # data integrity checks
+        @assert length(sites) == length(values) &quot;Provide as many data sites as data labels.&quot;
+        @assert !isempty(sites) &quot;Provide at least 1 data site.&quot;
+        num_vars = length(sites[1])
+        num_outputs = length(values[1])
+        @assert all( length(s) == num_vars for s ∈ sites ) &quot;All sites must have same dimension.&quot;
+        @assert all( length(v) == num_outputs for v ∈ values ) &quot;All values must have same dimension.&quot;
+
+        # use same precision everywhere ( defaults to single-precision )
+        dtype = promote_type( A, B, Float32 )
+        sites = convert_list_of_vecs( dtype, Sites )
+        values = convert_list_of_vecs( dtype, Vals )
+
+        kernels = make_kernels( φ, sites )
+        polys = canonical_basis( num_vars, poly_deg )
+
+        w, λ = coefficients( sites, values, kernels, polys )
+
+        new{dtype}( w, λ, kernels, polys)
+    end
+end
+
+function (m :: RBFInterpolationModel)( x :: Union{Vector, SVector} )
+    vec( _rbf_matrix( m.kernels, [x,] ) * m.w + _poly_matrix( m.polys, m.λ ) )
+end</code></pre><h2 id="Derivatives"><a class="docs-heading-anchor" href="#Derivatives">Derivatives</a><a id="Derivatives-1"></a><a class="docs-heading-anchor-permalink" href="#Derivatives" title="Permalink"></a></h2><p>Assume that <span>$φ$</span> is two times continuously differentiable. <br/>What is the gradient of an RBF model? Using the chain rule and <span>$ξ = x - x^j$</span> we get</p><p class="math-container">\[\dfrac{∂}{∂ξ_i} \left( φ(\| ξ \|) \right)
+=
+φ\prime ( \| ξ \| ) \cdot
+\dfrac{∂}{∂ξ_i} ( \| ξ \| )
+=
+φ\prime ( \| ξ \| ) \cdot
+\dfrac{ξ_i}{\|ξ\|}.\]</p><p>The right term is always bounded, but not well defined for <span>$ξ = 0$</span> (see <sup class="footnote-reference"><a id="citeref-wild_diss" href="#footnote-wild_diss">[wild_diss]</a></sup> for details). <br/><strong>That is why we require <span>$φ&#39;(0) \stackrel{!}= 0$</span>.</strong> <br/>We have <span>$∂/∂x_i ξ(x) = x - x^j$</span> and thus</p><p class="math-container">\[∇r(x) = \sum_{i=1}^N \frac{w_i φ\prime( \| x - x^i \| )}{\| x - x^i \|} (x - x^i) + ∇p(x)\]</p><p>For the Hessian <span>$Hr \colon ℝ^n \to ℝ^{n\times n}$</span> we need the gradients of the component functions</p><p class="math-container">\[    ψ_j(ξ) = \frac{ φ&#39;( \left\| ξ \right\| )}{\|ξ\|} ξ_j\]</p><p>Suppose <span>$ξ ≠ 0$</span>. First, using the product rule, we have</p><p class="math-container">\[   \dfrac{∂}{∂ξ_i}
+   \left(
+   \frac{ φ&#39;( \left\| ξ \right\| )}{\|ξ\|} ξ_j =
+   ξ_j
+   \right)
+   \dfrac{∂}{∂ξ_i}
+   \left(
+   \frac{ φ&#39;( \left\| ξ \right\| )}{\|ξ\|}
+   \right)
+   +
+   \frac{ φ&#39;( \left\| ξ \right\| )}{\|ξ\|}
+   \dfrac{∂}{∂ξ_i}
+   ξ_j\]</p><p>The last term is easy because of</p><p class="math-container">\[\dfrac{∂}{∂ξ_i} ξ_j = \begin{cases}
+    1 &amp; \text{if $i = j$},\\
+    0 &amp; \text{else.}
+\end{cases}\]</p><p>For the first term we find</p><p class="math-container">\[   \dfrac{∂}{∂ξ_i}
+   \left(
+     \frac{ φ&#39;( \left\| ξ \right\| )}
+      {\|ξ\|}
+   \right)
+   =
+   \frac{
+       φ&#39;\left(\left\| ξ \right\|\right) ∂_i \|ξ\|
+       - \|ξ\| ∂_i φ&#39;\left( \left\| ξ \right\|\right)
+    }{
+        \|ξ\|^2
+    }
+    =
+    \frac{
+        \dfrac{φ&#39;(\|ξ\|)}{\|ξ\|} ξ_i - \|ξ\|φ&#39;&#39;(\|ξ\|)\dfrac{ξ_i}{\|ξ\|}
+    }{\|ξ\|^2}\]</p><p>Hence, the gradient of <span>$ψ_j$</span> is</p><p class="math-container">\[    ∇ψ_j(ξ)
+    =
+    \left( \frac{φ&#39;(\|ξ\|)}{\|ξ\|^3}
+    -
+    \frac{φ&#39;&#39;(\|ξ\|)}{\|ξ\|^2} \right) \cdot ξ
+    -\frac{φ&#39;(\|ξ\|)}{\|ξ\|} e^j,\]</p><p>where <span>$e^j ∈ ℝ^n$</span> is all zeros, except <span>$e^j_j = 1$</span>. For <span>$ξ = 0$</span> the first term vanishes due to L&#39;Hôpital&#39;s rule:</p><p class="math-container">\[∇Ψ_j(0) = φ&#39;&#39;(0) e^j.\]</p><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-wild_diss"><a class="tag is-link" href="#citeref-wild_diss">wild_diss</a>“Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.</li><li class="footnote" id="footnote-wendland"><a class="tag is-link" href="#citeref-wendland">wendland</a>“Scattered Data Approximation”, Wendland</li></ul></section></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 3 May 2021 09:37">Monday 3 May 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
