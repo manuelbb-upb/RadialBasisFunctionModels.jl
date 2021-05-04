@@ -10,7 +10,6 @@ Memoize = "c03570c3-d221-55d1-a50c-7939bbd78826"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StaticPolynomials = "62e018b1-6e46-5407-a5a7-97d4fbcae734"
 ThreadSafeDicts = "4239201d-c60e-5e0a-9702-85d713665ba7"
-TypedPolynomials = "afbbf031-7a57-5f58-a1b9-b774a0fad08d"
 
 [compat]
 julia = "1.6"

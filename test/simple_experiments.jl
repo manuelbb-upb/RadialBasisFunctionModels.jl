@@ -14,4 +14,8 @@ vals = F.(sites)
 
 #%%
 
-rbf = RBFInterpolationModel( sites, vals, φ, 0 ; static_arrays = false)
+rbf = RBFInterpolationModel( sites, vals, φ, 0 ; static_arrays = true)
+
+#%%
+using Flux.Zygote
+gradient( x -> rbf(x)[end], rand(2) )

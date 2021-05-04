@@ -1,6 +1,6 @@
 module RBFModels #src
 
-export RBFInterpolationModel #src
+export RBFModel, RBFInterpolationModel #src
 export Multiquadric, InverseMultiquadric, Gaussian, Cubic, ThinPlateSpline #src
 
 # Dependencies of this module: 
@@ -9,7 +9,7 @@ using ThreadSafeDicts
 using Memoize: @memoize
 using StaticArrays
 
-using Flux.Zygote: Buffer
+using Flux.Zygote: Buffer, @adjoint
 
 # TODO also set Flux.trainable to make inner parameters trainable #src
 
@@ -330,74 +330,164 @@ function make_kernels( φ :: RadialFunction, sites :: Union{Vector, SVector} )
 end
 
 "Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `sites`."
-function make_kernels( φ :: Vector{RadialFunction}, sites :: Union{Vector, SVector} )
-    return [ ShiftedKernel(φ, c) for c ∈ sites ]
+function make_kernels( φ_arr :: Vector{RadialFunction}, sites :: Union{Vector, SVector} )
+    @assert length(φ_arr) == length(sites) "Provide as many functions `φ_arr` as `sites`."
+    return [ ShiftedKernel(φ[i], sites[i]) for i = eachindex( φ_arr ) ]
 end
 
-# The actual data type stores \
-# ~~the (center) sites and data labels~~ \
-# the coefficients and a (vector of) radial and polynomial basis function(s).
-struct RBFInterpolationModel{S,F}
+# The actual data type stores the coefficients and 
+# a (vector of) radial and polynomial basis function(s).
+
+"""
+    RBFModel{F<:AbstractFloat,S,V}
+
+`F` indicates the precision.
+`S` is `true` or `false` and indicates whether static arrays are used or not.
+`V` is `true` if vectors should be returned and `false` if scalars are returned.
+
+Initialize via one of the constructors, e.g.,
+    `RBFInterpolationModel( sites, values, φ, poly_deg )`
+to obain an interpolating RBF model.
+
+See also [`RBFInterpolationModel`](@ref)
+"""
+struct RBFModel{F<:AbstractFloat,S,V}
     w :: Union{SMatrix{<:Int, <:Int, F, <:Int}, Matrix{F}}    # RBF weight matrix
     λ :: Union{SMatrix{<:Int, <:Int, F, <:Int}, Matrix{F}}    # polynomial coefficient matrix
     kernels :: Vector{<:ShiftedKernel}   # vector of RBF basis functions 
     polys :: Vector # polynomial basis functions
 
+    ## Information fields
     num_vars :: Int
     num_outputs :: Int
-
-    function RBFInterpolationModel(  
-        Sites :: Vector{ VecTypeS },
-        Values :: Vector{ VecTypeV },
-        φ :: Union{RadialFunction,Vector{<:RadialFunction}},
-        poly_deg :: Int;
-        static_arrays ::Union{Bool, Nothing} = nothing
-        ) where { VecTypeS, VecTypeV }
-
-        ## data integrity checks
-        @assert length(Sites) == length(Values) "Provide as many data sites as data labels."
-        @assert !isempty(Sites) "Provide at least 1 data site."
-        num_vars = length(Sites[1])
-        num_outputs = length(Values[1])
-        @assert all( length(s) == num_vars for s ∈ Sites ) "All sites must have same dimension."
-        @assert all( length(v) == num_outputs for v ∈ Values ) "All values must have same dimension."
-        
-        ## use same precision everywhere ( at least half-precision )
-        TypeS = eltype( VecTypeS )
-        TypeV = eltype( VecTypeV )
-        dtype = promote_type( TypeS, TypeV, Float16 )
-
-        ## use static arrays only if matrices are not big
-        if isnothing(static_arrays)
-            static_arrays = (num_vars <= 10 && num_outputs <= 10)
-        end
-
-        NewVecTypeS = static_arrays ? SVector{ num_vars, dtype } : Vector{dtype}
-        NewVecTypeV = static_arrays ? SVector{ num_outputs, dtype } : Vector{dtype}
-        sites = convert_list_of_vecs( NewVecTypeS, Sites )
-        values = convert_list_of_vecs( NewVecTypeV, Values )
-        
-        kernels = make_kernels( φ, sites )
-        polys = canonical_basis( num_vars, poly_deg )
-
-        w, λ = coefficients( sites, values, kernels, polys )
-        
-        new{static_arrays, dtype}( w, λ, kernels, polys, num_vars, num_outputs)
-    end
+    poly_deg :: Int
 end
 
-"Evaluate `m` at vector `x`"
-function (m :: RBFInterpolationModel{false,F} where F)( x :: Union{Vector, SVector} )
+# Provided the fields are set properly, we can easily evaluate such a model:
+
+## helper for evaluating `m` if no StaticArrays are used
+function vec_eval(m :: RBFModel{F, false, V} where {F,V}, x :: Union{Vector, SVector} )
     vec( _func_matrix( m.kernels, [x,] ) * m.w .+ _func_matrix( m.polys, [x,] )  * m.λ )
 end
 
-"Evaluate `m` at vector `x`, using size information."
-function (m :: RBFInterpolationModel{true,F} where F)( x :: Union{Vector, SVector} )
+## helper for evaluating `m` if StaticArrays are used
+function vec_eval(m :: RBFModel{F, true, V} where {F,V}, x :: Union{Vector, SVector} )
     vec( 
         SizedMatrix{ 1, length(m.kernels) }(_func_matrix( m.kernels, [x,] )) * m.w .+
         SizedMatrix{ 1, length(m.polys) }(_func_matrix( m.polys, [x,] ) ) * m.λ 
     )
 end
+
+## actual (user) methods:
+"Evaluate `m` at `x`."
+(m :: RBFModel{S,F,true} where {S,F})( x :: Union{Vector, SVector} ) = vec_eval(m,x)
+(m :: RBFModel{S,F,false} where {S,F})( x :: Union{Vector, SVector} ) = vec_eval(m,x)[end]
+
+# The `RBFInterpolationModel` constructor takes data sites and values and return an `RBFModel` that 
+# interpolates these points.
+# We allow for passing scalar data and transform it internally.
+
+const NumberOrVector = Union{Real,Vector{<:Real}, SVector{<:Int, <:Real}};
+
+"""
+    RBFInterpolationModel( sites :: Vector{VS}, values :: Vector{VT}, φ, poly_deg = 1; 
+        static_arrays = nothing, vector_output = true ) where {VS<:NumberOrVector, VT<:NumberOrVector}
+
+Return an RBFModel `m` that is interpolating, i.e., `m(sites[i]) == values[i]` for all 
+`i = eachindex(sites)`.
+`φ` should be a `RadialFunction` or a vector of `RadialFunction`s that has the same length 
+as `sites` and `values`.
+`poly_deg` specifies the degree of the multivariate polynomial added to the RBF model.
+It will be reset if needed.
+`static_arrays` is automatically set to `true` if unspecified and the data dimensions are small.
+`vector_output` is ignored if the `values` have length > 1. Elsewise it specifies whether to return 
+vectors or scalars when evaluating.
+"""
+function RBFInterpolationModel(  
+    s̃ides :: Vector{ VecTypeS },
+    ṽalues :: Vector{ VecTypeV },
+    φ :: Union{RadialFunction,Vector{<:RadialFunction}},
+    poly_deg :: Int = 1;
+    static_arrays :: Union{Bool, Nothing} = nothing,
+    vector_output :: Bool = true,
+    ) where { VecTypeS<:NumberOrVector, VecTypeV<:NumberOrVector }
+
+    ## data integrity checks
+    @assert length(s̃ides) == length(ṽalues) "Provide as many data sites as data labels."
+    @assert !isempty(s̃ides) "Provide at least 1 data site."
+    num_vars = length(s̃ides[1])
+    num_outputs = length(ṽalues[1])
+    @assert all( length(s) == num_vars for s ∈ s̃ides ) "All sites must have same dimension."
+    @assert all( length(v) == num_outputs for v ∈ ṽalues ) "All values must have same dimension."
+    
+    ## use static arrays? if no user preference is set …
+    if isnothing(static_arrays)
+        ## … use only if matrices are small
+        static_arrays = (num_vars <= 10 && num_outputs <= 10)
+    end
+
+    ## prepare provided training data
+    ## use same precision everywhere ( at least half-precision )
+    TypeS = eltype( VecTypeS )
+    TypeV = eltype( VecTypeV )
+    dtype = promote_type( TypeS, TypeV, Float16 )
+    NewVecTypeS = static_arrays ? SVector{ num_vars, dtype } : Vector{dtype}
+    NewVecTypeV = static_arrays ? SVector{ num_outputs, dtype } : Vector{dtype}
+    sites = convert_list_of_vecs( NewVecTypeS, s̃ides )
+    values = convert_list_of_vecs( NewVecTypeV, ṽalues )
+    
+    kernels = make_kernels( φ, sites )
+    poly_deg = min( poly_deg, cpd_order(φ) - 1 )
+    polys = canonical_basis( num_vars, poly_deg )
+
+    w, λ = coefficients( sites, values, kernels, polys )
+
+    ## vector output?
+    vec_output = num_outputs == 1 ? vector_output : false
+    
+    RBFModel{dtype, static_arrays, vec_output}( w, λ, kernels, polys, num_vars, num_outputs, poly_deg)
+end
+
+# We want to provide an alternative constructor for interpolation models 
+# so that the radial function can be defined by passing a `Symbol` or `String`.
+
+const SymbolToRadialConstructor = NamedTuple((
+    :gaussian => Gaussian,
+    :multiquadric => Multiquadric,
+    :inv_multiquadric => InverseMultiquadric,
+    :cubic => Cubic,
+    :thin_plate_spline => ThinPlateSpline
+))
+
+function RBFInterpolationModel(
+        s̃ides :: Vector{ <: NumberOrVector }, 
+        ṽalues :: Vector{ <:NumberOrVector },
+        radial_func :: Union{Symbol, String}, 
+        constructor_args :: Union{Nothing, Vector{<:Tuple}, Tuple} = nothing, 
+        poly_deg :: Int = 1; kwargs ...
+    )
+
+    ## which radial function to use?
+    radial_symb = Symbol( lowercase( string( radial_func ) ) )
+    if !(radial_symb ∈ keys(SymbolToRadialConstructor))
+        @warn "Radial Funtion $(radial_symb) not known, using Gaussian."
+        radial_symb = :gaussian
+    end
+    constructor = SymbolToRadialConstructor[radial_symb]
+
+    if isnothing(constructor_args)
+        φ = constructor()
+    elseif constructor_args isa Tuple 
+        φ = constructor( constructor_args... )
+    elseif constructor_args isa Vector 
+        @assert length(constructor_args) == length(s̃ides)
+        φ = [ constructor( arg_tuple... ) for arg_tuple ∈ constructor_args ]
+    end
+    
+    return RBFInterpolationModel( s̃ides, ṽalues, φ, poly_deg; kwargs... )
+
+end
+
 
 # ## Derivatives 
 # Assume that ``φ`` is two times continuously differentiable. \ 
@@ -481,8 +571,12 @@ end
 # where ``e^j ∈ ℝ^n`` is all zeros, except ``e^j_j = 1``.
 # For ``ξ = 0`` the first term vanishes due to L'Hôpital's rule:
 # ```math 
-# ∇Ψ_j(0) = φ''(0) e^j.
+# ∇ψ_j(0) = φ''(0) e^j.
 # ```
+
+# ### Custom Adjoints
+# For automatic differentiation we need custom adjoints for some `StaticArrays`:
+@adjoint (T::Type{<:StaticArrays.SizedMatrix})(x::AbstractMatrix) = T(x), dv -> (nothing, dv)
 
 # [^wild_diss]: “Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.
 # [^wendland]: “Scattered Data Approximation”, Wendland
