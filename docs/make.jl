@@ -1,10 +1,14 @@
 using RBFModels
 using Documenter
 
-using Literate
+include("make_literate.jl")
 
-src_path = joinpath( @__DIR__, "..", "src" )
-Literate.markdown(joinpath( src_path, "RBFModels.jl"), "docs/src"; documenter = true)
+project_path =joinpath(@__DIR__, "..", "Project.toml")
+
+if ! (project_path ∈ Base.load_path())
+    push!(LOAD_PATH, project_path)
+end
+
 #%%
 
 DocMeta.setdocmeta!(RBFModels, :DocTestSetup, :(using RBFModels); recursive=true)

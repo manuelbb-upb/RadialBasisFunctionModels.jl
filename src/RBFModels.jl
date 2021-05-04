@@ -1,15 +1,17 @@
 module RBFModels #src
 
 export RBFInterpolationModel #src
-export Multiquadric, InverseMultiquadric, Gaussian, Cubic, ThinPlateSpline # src
+export Multiquadric, InverseMultiquadric, Gaussian, Cubic, ThinPlateSpline #src
 
-using DynamicPolynomials, StaticPolynomials  # src
-using ThreadSafeDicts # src
-using Memoize: @memoize # src 
-using StaticArrays # src
+# Dependencies of this module: 
+using DynamicPolynomials, StaticPolynomials 
+using ThreadSafeDicts
+using Memoize: @memoize
+using StaticArrays
 
 using Flux.Zygote: Buffer
-# TODO also set Flux.trainable to make inner parameters trainable
+
+# TODO also set Flux.trainable to make inner parameters trainable #src
 
 # # Radial Basis Function Models 
 
@@ -25,7 +27,7 @@ using Flux.Zygote: Buffer
 # The radial function ``φ\colon [0, ∞) \to ℝ`` defines the RBF and we can solve for 
 # the coefficients ``w`` by solving the interpolation system 
 # ```math 
-    # r( x^i ) \stackrel{!}= y^i \quad \text{for all $i=1,…,N$.}
+    # r( x^i ) \stackrel{!}= y^i \quad \text{for all }i=1,…,N
 # ```
 # The function ``k(•) = φ(\|•\|_2)`` is radially symmetric around the origin.
 # ``k`` is called the kernel of an RBF. 
@@ -185,8 +187,8 @@ function non_negative_solutions( d :: Int, n :: Int )
     else
         solutions = [];
         for i = 0 : d
-            # make RHS smaller by and find all solutions of length `n-1`
-            # then concatenate with difference `d-i`
+            ## make RHS smaller by and find all solutions of length `n-1`
+            ## then concatenate with difference `d-i`
             for shorter_solution ∈ non_negative_solutions( i, n - 1)
                 push!( solutions, [ d-i ; shorter_solution ] )
             end
@@ -251,6 +253,8 @@ function _func_matrix( funcs, sites )
     end
     return copy(Φ)
 end
+
+# For now, we use the `\` operator to solve `A * coeff = RHS`:
 
 @doc """
     coefficients(sites, values, kernels, polys )
@@ -439,8 +443,10 @@ end
 # ```
 # The last term is easy because of 
 # ```math 
-# \dfrac{∂}{∂ξ_i} ξ_j = \begin{cases}
-#     1 & \text{if $i = j$},\\
+# \frac{∂}{∂ξ_i} ξ_j 
+# = 
+# \begin{cases}
+#     1 & \text{if }i = j,\\
 #     0 & \text{else.}
 # \end{cases}
 # ```
