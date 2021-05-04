@@ -1,9 +1,7 @@
-# Run manually at the moment
-# Could be automated by including in `make.jl`
 
 using Pkg
 current_env = Base.load_path()[1]
-Pkg.activate(joinpath(@__DIR__, ".."))
+Pkg.activate(joinpath(@__DIR__))
 using Literate 
 
 Literate.markdown(
