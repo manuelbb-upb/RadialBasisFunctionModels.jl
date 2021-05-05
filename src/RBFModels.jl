@@ -36,8 +36,10 @@ using Flux.Zygote: Buffer, @adjoint
 abstract type RadialFunction <: Function end
 
 # Each Type that inherits from `RadialFunction` should implement 
-# an evaluation method:
-(φ :: RadialFunction )( x :: Real ) :: Real = Nothing;
+# an evaluation method.
+# It takes the radius/distance ``ρ = ρ(x) = \| x - x^i \|`` from 
+# ``x` to a specific center ``x^i``.
+(φ :: RadialFunction )( ρ :: Real ) :: Real = Nothing;
 
 # From an `RadialFunction` and a vector we can define a shifted kernel function:
 struct ShiftedKernel <: Function
@@ -80,7 +82,7 @@ struct Multiquadric <: RadialFunction
     α :: Real   # shape parameter 
     β :: Real   # exponent 
 
-    Multiquadric(α = 1, β = .5) = begin 
+    Multiquadric(α = 1, β = 1//2 ) = begin 
         @assert α > 0 "The shape parameter `α` must be positive."
         @assert β % 1 != 0 "The exponent must not be an integer."
         @assert β > 0 "The exponent must be positive."
@@ -97,7 +99,7 @@ struct InverseMultiquadric <: RadialFunction
     α :: Real 
     β :: Real 
 
-    Multiquadric( α = 1, β = .5 ) = begin 
+    InverseMultiquadric( α = 1, β = 1//2 ) = begin 
         @assert α > 0 "The shape parameter `α` must be positive."
         @assert β > 0 "The exponent must be positive."
         new(α, β)
@@ -208,10 +210,10 @@ polynomials of degree at most `d`.
 """
 @memoize ThreadSafeDict function canonical_basis( n :: Int, d :: Int )
     @polyvar Xvar[1 : n]
-    basis = StaticPolynomials.Polynomial[]  # list of basis polynomials
+    basis = DynamicPolynomials.Polynomial{true,Int}[] # list of basis polynomials
     for d̄ = 0 : d 
         for multi_exponent ∈ non_negative_solutions( d̄, n )
-            push!( basis, StaticPolynomials.Polynomial( prod( Xvar .^ multi_exponent ) ) )
+            push!( basis, DynamicPolynomials.Polynomial(prod( Xvar .^ multi_exponent ) ))
         end
     end
     return basis
@@ -240,40 +242,54 @@ end
 
 # We want a `coefficients` function and use the following helpers:
 
-"Evaluate each function in `funcs` on each vector in `sites`, 
-so that each column corresponds to a function."
-function _func_matrix( funcs, sites )
+# Buffer( xs :: Real, args ...) = Buffer( [xs,], args... ) #src
+
+"Evaluate each function in `funcs` on each number/vector in `func_args`, 
+so that each column corresponds to a function evaluation."
+function _func_matrix( funcs, func_args )
     ## easy way:
-    ##[ funcs[j](sites[i]) for i = eachindex(sites), j = eachindex(funcs) ]
+    ##[ funcs[j](func_args[i]) for i = eachindex(func_args), j = eachindex(funcs) ]
     
     ## Zygote-compatible
-    Φ = Buffer( sites[1], length(sites), length(funcs) )
+    Φ = Buffer( func_args[1], length(func_args), length(funcs) )
     for (i, func) ∈ enumerate(funcs)
-        Φ[:,i] = [ func( x ) for x ∈ sites ]
+        Φ[:,i] = func.( func_args )
     end
     return copy(Φ)
 end
 
-# For now, we use the `\` operator to solve `A * coeff = RHS`:
+# For now, we use the `\` operator to solve `A * coeff = RHS`.
+# Furthermore, we allow for different interpolation `sites` and 
+# RBF centers by allowing for passing `kernels`.
+
+const AnyVec{T} = Union{Vector{T}, SVector{I, T}} where I
 
 @doc """
-    coefficients(sites, values, kernels, polys )
+    coefficients(sites, values, centers, rad_funcs, polys )
 
 Return the coefficient matrices `w` and `λ` for an rbf model 
-``r(x) = Σ_{i=1}^N wᵢ kᵢ(x) + Σ_{j=1}^M λᵢ pᵢ(x)``,
-where ``N`` is the length of `kernels` and ``M``
+``r(x) = Σ_{i=1}^N wᵢ φ(\\|x - x^i\\|) + Σ_{j=1}^M λᵢ pᵢ(x)``,
+where ``N`` is the length of `rad_funcs` (and `centers`) and ``M``
 is the length of `polys`.
 
 The arguments are 
 * an array of data sites `sites` with vector entries from ``ℝ^n``.
 * an array of data values `values` with vector entries from ``ℝ^k``.
-* an array `kernels` of RBF basis functions (of type `ShiftedKernel`)
+* an array of `ShiftedKernel`s.
 * an array `polys` of polynomial basis functions.
 """
-function coefficients( sites, values, kernels, polys )
+function coefficients( 
+    sites :: Vector{ST}, 
+    values :: Vector{VT}, 
+    kernels :: Vector{ShiftedKernel},
+    polys :: Vector{<:DynamicPolynomials.Polynomial} 
+    ) where {ST,VT}
 
-    ## Φ-matrix, columns =̂ basis funcs, rows =̂ sites 
-    N = length(sites);
+    @show ST, VT
+    n_out = length(values[1])
+    
+    ## Φ-matrix, N columns =̂ basis funcs, rows =̂ sites
+    N = length(kernels);
     Φ = _func_matrix( kernels, sites )
     
     ## P-matrix, N × Q
@@ -299,7 +315,11 @@ function coefficients( sites, values, kernels, polys )
     coeff = A \ RHS 
 
     ## return w and λ
-    return coeff[1 : N, :], coeff[N+1 : end, :]
+    if ST <: SVector
+        return SizedMatrix{N,n_out}(coeff[1 : N, :]), SizedMatrix{Q, n_out}(coeff[N+1 : end, :])
+    else
+        return coeff[1 : N, :], coeff[N+1 : end, :]
+    end
 end
 
 # ### The Model Data Type
@@ -335,15 +355,80 @@ function make_kernels( φ_arr :: Vector{RadialFunction}, sites :: Union{Vector, 
     return [ ShiftedKernel(φ[i], sites[i]) for i = eachindex( φ_arr ) ]
 end
 
-# The actual data type stores the coefficients and 
-# a (vector of) radial and polynomial basis function(s).
+# The actual data does *not* store the coefficients, but rather:
+# * a `RBFOutputSystem`s and
+# * a `PolynomialSystem` (~ vector of polynomials) with `num_outputs` entries.
+# This should proof beneficial for evaluation and differentiation.
+
+struct RBFOutputSystem{S}
+    kernels :: Vector{ShiftedKernel}
+    weights :: Union{Matrix, SMatrix, SizedMatrix}
+
+    num_outputs :: Int 
+    num_centers :: Int
+end
+
+const NumberOrVector{T} = Union{Real,Vector{T}, SVector{I, T}} where I;
+
+"Return a vector containing the distance of `x` to each kernel center of `RBFOutputSystem`."
+function _distances( rbf ::  RBFOutputSystem, x :: NumberOrVector ) 
+    return [ norm2( k.c .- x ) for k ∈ rbf.kernels ]
+end
+
+"Return the vector [ φ₁(ρ₁) … φₙ(ρₙ) ] = [ k1(x) … kn(x) ]"
+function _kernel_vector( rbf :: RBFOutputSystem, ρ :: Vector{<:Real} )
+    return [ rbf.kernels[i].φ(ρ[i]) for i = 1 : length(ρ) ]
+end
+
+## StaticArrays
+"Evaluate (output `ℓ` of) `rbf` by plugging in distance `ρ[i]` in radial function `o.kernels[i].φ`."
+function _eval_rbfs_at_ρ( rbf ::  RBFOutputSystem{true}, ρ :: Vector{<:Real}, ℓ :: Union{Int,Nothing} = nothing )
+    W, n_out = isnothing(ℓ) ? (rbf.weights, rbf.num_outputs) : (rbf.weights[:, ℓ],1)  # should be sized
+    vec(SizedVector{rbf.num_centers}( _kernel_vector( rbf, ρ ) )'W)
+end
+
+## normal Vectors
+function _eval_rbfs_at_ρ(rbf :: RBFOutputSystem{false}, ρ :: Vector{<:Real}, ℓ :: Union{Int,Nothing} = nothing ) 
+    W = isnothing(ℓ) ? rbf.weights : rbf.weights[:, ℓ]
+    vec(_kernel_vector(rbf, ρ)'W)
+end
+
+"Evaluate `rbf :: RBFOutputSystem` at site `x`."
+function ( rbf ::  RBFOutputSystem )( x :: NumberOrVector, ℓ :: Union{Int,Nothing} = nothing )
+    ρ = _distances( rbf, x )        # calculate distance vector 
+    return _eval_rbfs_at_ρ( rbf, ρ, ℓ ) # eval at distances 
+end
+
+## called by RBFModel, vector output 
+_eval_rbf_sys(  ::Val{true}, rbf :: RBFOutputSystem, x :: NumberOrVector, ℓ :: Union{Int,Nothing} = nothing ) = rbf(x,ℓ)
+## scalar output
+_eval_rbf_sys( ::Val{false}, rbf :: RBFOutputSystem, x :: NumberOrVector, ℓ :: Union{Int,Nothing} = nothing ) = rbf(x,ℓ)[end]
+
+
+# For evaluating polynomials, we build our own `PolySystem`: 
+# It contains a list of StaticPolynomials and a flag indicating a static return type.
+
+struct PolySystem{S}
+    polys :: Vector{StaticPolynomials.Polynomial}
+    num_outputs :: Int
+end
+
+_eval_polys( poly_sys :: PolySystem{false}, x :: NumberOrVector, ℓ :: Nothing ) = [ p(x) for p ∈ poly_sys.polys ]
+_eval_polys( poly_sys :: PolySystem{true}, x :: NumberOrVector, ℓ :: Nothing ) = SizedVector{poly_sys.num_outputs}([ p(x) for p ∈ poly_sys.polys ])
+_eval_polys( poly_sys :: PolySystem{false}, x :: NumberOrVector, ℓ :: Int ) = [ poly_sys.polys[ℓ](x) ]
+_eval_polys( poly_sys :: PolySystem{true}, x :: NumberOrVector, ℓ :: Int ) = SVector{1}([ poly_sys.polys[ℓ](x) ])
+
+## called below, from RBFModel, vector output and scalar output
+_eval_poly_sys( ::Val{true}, poly_sys, x, ℓ) = _eval_polys( poly_sys, x, ℓ)
+_eval_poly_sys( ::Val{false}, poly_sys, x, ℓ) = _eval_polys( poly_sys, x, ℓ)[end]
+
+# The final model struct then is:
 
 """
-    RBFModel{F<:AbstractFloat,S,V}
+    RBFModel{S,V}
 
-`F` indicates the precision.
-`S` is `true` or `false` and indicates whether static arrays are used or not.
-`V` is `true` if vectors should be returned and `false` if scalars are returned.
+* `S` is `true` or `false` and indicates whether static arrays are used or not.
+* `V` is `true` if vectors should be returned and `false` if scalars are returned.
 
 Initialize via one of the constructors, e.g.,
     `RBFInterpolationModel( sites, values, φ, poly_deg )`
@@ -351,43 +436,26 @@ to obain an interpolating RBF model.
 
 See also [`RBFInterpolationModel`](@ref)
 """
-struct RBFModel{F<:AbstractFloat,S,V}
-    w :: Union{SMatrix{<:Int, <:Int, F, <:Int}, Matrix{F}}    # RBF weight matrix
-    λ :: Union{SMatrix{<:Int, <:Int, F, <:Int}, Matrix{F}}    # polynomial coefficient matrix
-    kernels :: Vector{<:ShiftedKernel}   # vector of RBF basis functions 
-    polys :: Vector # polynomial basis functions
+struct RBFModel{S,V}
+    rbf_sys :: RBFOutputSystem{S}
+    poly_sys :: PolySystem{S}
 
     ## Information fields
     num_vars :: Int
     num_outputs :: Int
-    poly_deg :: Int
+    num_centers :: Int
 end
 
-# Provided the fields are set properly, we can easily evaluate such a model:
+function (mod :: RBFModel{S,V} )( x :: NumberOrVector, ℓ :: Union{Nothing,Int} = nothing ) where{S,V} 
+    rbf_eval = _eval_rbf_sys( Val(V), mod.rbf_sys, x, ℓ )
+    poly_eval = _eval_poly_sys( Val(V), mod.poly_sys, x, ℓ ) 
 
-## helper for evaluating `m` if no StaticArrays are used
-function vec_eval(m :: RBFModel{F, false, V} where {F,V}, x :: Union{Vector, SVector} )
-    vec( _func_matrix( m.kernels, [x,] ) * m.w .+ _func_matrix( m.polys, [x,] )  * m.λ )
+    return rbf_eval .+ poly_eval
 end
-
-## helper for evaluating `m` if StaticArrays are used
-function vec_eval(m :: RBFModel{F, true, V} where {F,V}, x :: Union{Vector, SVector} )
-    vec( 
-        SizedMatrix{ 1, length(m.kernels) }(_func_matrix( m.kernels, [x,] )) * m.w .+
-        SizedMatrix{ 1, length(m.polys) }(_func_matrix( m.polys, [x,] ) ) * m.λ 
-    )
-end
-
-## actual (user) methods:
-"Evaluate `m` at `x`."
-(m :: RBFModel{S,F,true} where {S,F})( x :: Union{Vector, SVector} ) = vec_eval(m,x)
-(m :: RBFModel{S,F,false} where {S,F})( x :: Union{Vector, SVector} ) = vec_eval(m,x)[end]
 
 # The `RBFInterpolationModel` constructor takes data sites and values and return an `RBFModel` that 
 # interpolates these points.
 # We allow for passing scalar data and transform it internally.
-
-const NumberOrVector = Union{Real,Vector{<:Real}, SVector{<:Int, <:Real}};
 
 """
     RBFInterpolationModel( sites :: Vector{VS}, values :: Vector{VT}, φ, poly_deg = 1; 
@@ -438,14 +506,29 @@ function RBFInterpolationModel(
     
     kernels = make_kernels( φ, sites )
     poly_deg = min( poly_deg, cpd_order(φ) - 1 )
-    polys = canonical_basis( num_vars, poly_deg )
+    poly_basis = canonical_basis( num_vars, poly_deg )
 
-    w, λ = coefficients( sites, values, kernels, polys )
+    w, λ = coefficients( sites, values, kernels, poly_basis )
 
-    ## vector output?
+    @show typeof(w)
+
+    ## build output polynomials
+    poly_vec = StaticPolynomials.Polynomial[] 
+    for coeff_ℓ ∈ eachcol( λ )
+        push!( poly_vec, StaticPolynomials.Polynomial( poly_basis'coeff_ℓ ) )
+    end 
+    poly_sys = PolySystem{static_arrays}( poly_vec, num_outputs )
+
+    ## vector output? (dismiss user choice if labels are vectors)
     vec_output = num_outputs == 1 ? vector_output : false
     
-    RBFModel{dtype, static_arrays, vec_output}( w, λ, kernels, polys, num_vars, num_outputs, poly_deg)
+    ## build RBF system 
+    num_centers = length(sites)
+    rbf_sys = RBFOutputSystem{static_arrays}(kernels, w, num_outputs, num_centers)
+   
+    return RBFModel{static_arrays, vec_output}( 
+        rbf_sys, poly_sys, num_vars, num_outputs, num_centers
+    )
 end
 
 # We want to provide an alternative constructor for interpolation models 
@@ -505,7 +588,7 @@ end
 # The right term is always bounded, but not well defined for ``ξ = 0`` 
 # (see [^wild_diss] for details). \
 # **That is why we require ``φ'(0) \stackrel{!}= 0``.** \
-# We have ``∂/∂x_i ξ(x) = x - x^j`` and thus
+# We have ``\dfrac{∂}{∂x_i} ξ(x) = x - x^j`` and thus
 # ```math
     # ∇r(x) = \sum_{i=1}^N \frac{w_i φ\prime( \| x - x^i \| )}{\| x - x^i \|} (x - x^i) + ∇p(x)
 # ```
@@ -577,7 +660,7 @@ end
 # ### Custom Adjoints
 # For automatic differentiation we need custom adjoints for some `StaticArrays`:
 @adjoint (T::Type{<:StaticArrays.SizedMatrix})(x::AbstractMatrix) = T(x), dv -> (nothing, dv)
-
+@adjoint (T::Type{<:StaticArrays.SVector})(x::AbstractVector) = T(x), dv -> (nothing, dv)
 # [^wild_diss]: “Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.
 # [^wendland]: “Scattered Data Approximation”, Wendland
 

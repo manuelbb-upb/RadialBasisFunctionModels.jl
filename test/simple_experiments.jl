@@ -12,10 +12,8 @@ vals = F.(sites)
 # Use the Multiquadric:
 φ = Multiquadric()
 
-#%%
-
 rbf = RBFInterpolationModel( sites, vals, φ, 0 ; static_arrays = true)
 
 #%%
 using Flux.Zygote
-gradient( x -> rbf(x)[end], rand(2) )
+gradient( x -> rbf(x)[end], rand(Float32,2) )
