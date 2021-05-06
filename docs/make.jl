@@ -1,7 +1,7 @@
 using RBFModels
 using Documenter
 
-include("make_literate.jl")
+#include("make_literate.jl")
 
 project_path =joinpath(@__DIR__, "..", "Project.toml")
 

@@ -41,14 +41,19 @@ abstract type RadialFunction <: Function end
 # ``x` to a specific center ``x^i``.
 (φ :: RadialFunction )( ρ :: Real ) :: Real = Nothing;
 
-# From an `RadialFunction` and a vector we can define a shifted kernel function:
+# From an `RadialFunction` and a vector we can define a shifted kernel function.
+# We allow evaluation for statically sized vectors, too:
+const AnyVec{T} = Union{Vector{T}, SVector{I, T}, SizedVector{I,T,V}} where {I,V}
+
 struct ShiftedKernel <: Function
     φ :: RadialFunction
-    c :: Union{Vector, SVector}
+    c :: AnyVec 
 end
 
 norm2( vec ) = sqrt(sum( vec.^2 ))
-function (k::ShiftedKernel)( x :: Union{Vector, SVector} )
+
+"Evaluate kernel `k` at `x - k.c`."
+function (k::ShiftedKernel)( x :: AnyVec )
     return k.φ( norm2( x .- k.c ) )
 end
 
@@ -62,6 +67,15 @@ end
 
 # The **Gaussian** is defined by ``φ(ρ) = \exp \left( - (αρ)^2 \right)``, where 
 # ``α`` is a shape parameter to fine-tune the function.
+
+"""
+    Gaussian( α = 1 ) <: RadialFunction
+
+A `RadialFunction` with 
+```math 
+    φ(ρ) = \\exp( - (α ρ)^2 ).
+```
+"""
 struct Gaussian <: RadialFunction 
     α :: Real
 
@@ -78,6 +92,14 @@ end
 # The **Multiquadric** is ``φ(ρ) = - \sqrt{ 1 + (αρ)^2 }`` and also has a positive shape 
 # parameter. We can actually generalize it to the following form:
 
+"""
+    Multiquadric( α = 1, β = 1//2 ) <: RadialFunction
+
+A `RadialFunction` with 
+```math 
+    φ(ρ) = (-1)^{ \\ceil{β} } ( 1 + (αρ)^2 )^β
+```
+"""
 struct Multiquadric <: RadialFunction
     α :: Real   # shape parameter 
     β :: Real   # exponent 
@@ -95,6 +117,14 @@ function ( φ :: Multiquadric )( ρ :: Real )
 end
 
 # Related is the **Inverse Multiquadric** `` φ(ρ) = (1+(αρ)^2)^{-β}`` is related:
+"""
+    InverseMultiquadric( α = 1, β = 1//2 ) <: RadialFunction
+
+A `RadialFunction` with 
+```math 
+    φ(ρ) = ( 1 + (αρ)^2 )^{-β}
+```
+"""
 struct InverseMultiquadric <: RadialFunction
     α :: Real 
     β :: Real 
@@ -112,6 +142,14 @@ end
 
 # The **Cubic** is ``φ(ρ) = ρ^3``. 
 # It can also be generalized: 
+"""
+    Cubic( β = 3 ) <: RadialFunction
+
+A `RadialFunction` with 
+```math 
+    φ(ρ) = (-1)^{ \\ceil{β}/2 } ρ^β
+```
+"""
 struct Cubic <: RadialFunction 
     β :: Real 
 
@@ -130,7 +168,14 @@ end
 # ``φ(ρ) = ρ^2 \log( ρ )``. 
 # We provide a generalized version, which defaults to 
 # ``φ(ρ) = - ρ^4 \log( ρ )``.
+"""
+    ThinPlateSpline( k = 2 ) <: RadialFunction
 
+A `RadialFunction` with 
+```math 
+    φ(ρ) = (-1)^{k+1} ρ^{2k} \\log(ρ)
+```
+"""
 struct ThinPlateSpline <: RadialFunction
     k :: Int 
 
@@ -152,7 +197,7 @@ end
 # right polynomial space for ``p``.
 # Basically, if the RBF Kernel (or the radial function) is 
 # *conditionally positive definite* of order ``D`` we have to 
-# find a polynomial ``p`` with ``\deg p = D-1``.[^wendland]
+# find a polynomial ``p`` with ``\deg p \ge D-1``.[^wendland]
 # If the kernel is CPD of order ``D=0`` we do not have to add an polynomial 
 # and can interpolate arbitrary (distinct) data points.
 
@@ -222,7 +267,7 @@ end
 # ### The equation system
 
 # Set ``P = [ p_j(x^i) ] ∈ ℝ^{N × Q}`` and ``Φ = φ(\| x^i - x^j \|)``.
-# The linear equation system for the coefficients of $r$ is 
+# In case of interpolation, the linear equation system for the coefficients of $r$ is 
 # ```math 
 #     \begin{bmatrix}
 #     Φ & P \\
@@ -262,8 +307,6 @@ end
 # Furthermore, we allow for different interpolation `sites` and 
 # RBF centers by allowing for passing `kernels`.
 
-const AnyVec{T} = Union{Vector{T}, SVector{I, T}} where I
-
 @doc """
     coefficients(sites, values, centers, rad_funcs, polys )
 
@@ -285,7 +328,6 @@ function coefficients(
     polys :: Vector{<:DynamicPolynomials.Polynomial} 
     ) where {ST,VT}
 
-    @show ST, VT
     n_out = length(values[1])
     
     ## Φ-matrix, N columns =̂ basis funcs, rows =̂ sites
@@ -316,7 +358,7 @@ function coefficients(
 
     ## return w and λ
     if ST <: SVector
-        return SizedMatrix{N,n_out}(coeff[1 : N, :]), SizedMatrix{Q, n_out}(coeff[N+1 : end, :])
+        return SMatrix{N,n_out}(coeff[1 : N, :]), SMatrix{Q, n_out}(coeff[N+1 : end, :])
     else
         return coeff[1 : N, :], coeff[N+1 : end, :]
     end
@@ -345,12 +387,12 @@ function convert_list_of_vecs(::Type{F}, list_of_vecs :: Vector{F} ) where F
 end
 
 "Return array of `ShiftedKernel`s based on `φ` with centers from `sites`."
-function make_kernels( φ :: RadialFunction, sites :: Union{Vector, SVector} )
+function make_kernels( φ :: RadialFunction, sites :: AnyVec )
     return [ ShiftedKernel(φ, c) for c ∈ sites ]
 end
 
 "Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `sites`."
-function make_kernels( φ_arr :: Vector{RadialFunction}, sites :: Union{Vector, SVector} )
+function make_kernels( φ_arr :: Vector{RadialFunction}, sites :: AnyVec )
     @assert length(φ_arr) == length(sites) "Provide as many functions `φ_arr` as `sites`."
     return [ ShiftedKernel(φ[i], sites[i]) for i = eachindex( φ_arr ) ]
 end
@@ -380,28 +422,28 @@ function _kernel_vector( rbf :: RBFOutputSystem, ρ :: Vector{<:Real} )
     return [ rbf.kernels[i].φ(ρ[i]) for i = 1 : length(ρ) ]
 end
 
-## StaticArrays
+## evaluate at distances, static StaticArrays are used
 "Evaluate (output `ℓ` of) `rbf` by plugging in distance `ρ[i]` in radial function `o.kernels[i].φ`."
 function _eval_rbfs_at_ρ( rbf ::  RBFOutputSystem{true}, ρ :: Vector{<:Real}, ℓ :: Union{Int,Nothing} = nothing )
     W, n_out = isnothing(ℓ) ? (rbf.weights, rbf.num_outputs) : (rbf.weights[:, ℓ],1)  # should be sized
-    vec(SizedVector{rbf.num_centers}( _kernel_vector( rbf, ρ ) )'W)
+    vec(SVector{rbf.num_centers}( _kernel_vector( rbf, ρ ) )'W)
 end
 
-## normal Vectors
+## evaluate at distances, normal Vectors are used 
 function _eval_rbfs_at_ρ(rbf :: RBFOutputSystem{false}, ρ :: Vector{<:Real}, ℓ :: Union{Int,Nothing} = nothing ) 
     W = isnothing(ℓ) ? rbf.weights : rbf.weights[:, ℓ]
     vec(_kernel_vector(rbf, ρ)'W)
 end
 
 "Evaluate `rbf :: RBFOutputSystem` at site `x`."
-function ( rbf ::  RBFOutputSystem )( x :: NumberOrVector, ℓ :: Union{Int,Nothing} = nothing )
+function ( rbf ::  RBFOutputSystem )( x :: NumberOrVector, ℓ :: Union{Int,Nothing} )
     ρ = _distances( rbf, x )        # calculate distance vector 
     return _eval_rbfs_at_ρ( rbf, ρ, ℓ ) # eval at distances 
 end
 
-## called by RBFModel, vector output 
+## called by RBFModel{S,true}, vector output 
 _eval_rbf_sys(  ::Val{true}, rbf :: RBFOutputSystem, x :: NumberOrVector, ℓ :: Union{Int,Nothing} = nothing ) = rbf(x,ℓ)
-## scalar output
+## called by RBFModel{S,false}, scalar output
 _eval_rbf_sys( ::Val{false}, rbf :: RBFOutputSystem, x :: NumberOrVector, ℓ :: Union{Int,Nothing} = nothing ) = rbf(x,ℓ)[end]
 
 
@@ -413,10 +455,13 @@ struct PolySystem{S}
     num_outputs :: Int
 end
 
-_eval_polys( poly_sys :: PolySystem{false}, x :: NumberOrVector, ℓ :: Nothing ) = [ p(x) for p ∈ poly_sys.polys ]
-_eval_polys( poly_sys :: PolySystem{true}, x :: NumberOrVector, ℓ :: Nothing ) = SizedVector{poly_sys.num_outputs}([ p(x) for p ∈ poly_sys.polys ])
-_eval_polys( poly_sys :: PolySystem{false}, x :: NumberOrVector, ℓ :: Int ) = [ poly_sys.polys[ℓ](x) ]
-_eval_polys( poly_sys :: PolySystem{true}, x :: NumberOrVector, ℓ :: Int ) = SVector{1}([ poly_sys.polys[ℓ](x) ])
+_eval_polys( poly_sys :: PolySystem{false}, x :: AnyVec, ℓ :: Nothing ) = [ p(x) for p ∈ poly_sys.polys ]
+_eval_polys( poly_sys :: PolySystem{true}, x :: AnyVec, ℓ :: Nothing ) = SVector{poly_sys.num_outputs}([ p(x) for p ∈ poly_sys.polys ])
+_eval_polys( poly_sys :: PolySystem{false}, x :: AnyVec, ℓ :: Int ) = [ poly_sys.polys[ℓ](x) ]
+_eval_polys( poly_sys :: PolySystem{true}, x :: AnyVec, ℓ :: Int ) = SVector{1}([ poly_sys.polys[ℓ](x) ])
+## StaticPolynomials cannot handle scalar input for variable vectors:
+_eval_polys( poly_sys :: PolySystem{false}, x :: Real, ℓ :: Union{Nothing, Int}) = _eval_polys(poly_sys,[x,],ℓ)
+_eval_polys( poly_sys :: PolySystem{true}, x :: Real, ℓ :: Union{Nothing, Int}) = _eval_polys(poly_sys,SVector{1}([x,]),ℓ)
 
 ## called below, from RBFModel, vector output and scalar output
 _eval_poly_sys( ::Val{true}, poly_sys, x, ℓ) = _eval_polys( poly_sys, x, ℓ)
@@ -510,8 +555,6 @@ function RBFInterpolationModel(
 
     w, λ = coefficients( sites, values, kernels, poly_basis )
 
-    @show typeof(w)
-
     ## build output polynomials
     poly_vec = StaticPolynomials.Polynomial[] 
     for coeff_ℓ ∈ eachcol( λ )
@@ -602,9 +645,9 @@ end
 # ```math 
 #    \dfrac{∂}{∂ξ_i} 
 #    \left( 
-#    \frac{ φ'( \left\| ξ \right\| )}{\|ξ\|} ξ_j = 
+#    \frac{ φ'( \left\| ξ \right\| )}{\|ξ\|} ξ_j  
+#    \right) =
 #    ξ_j 
-#    \right)
 #    \dfrac{∂}{∂ξ_i} 
 #    \left( 
 #    \frac{ φ'( \left\| ξ \right\| )}{\|ξ\|}       
