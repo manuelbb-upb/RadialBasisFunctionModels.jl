@@ -6,6 +6,7 @@ version = "0.1.0"
 [deps]
 DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
+ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Memoize = "c03570c3-d221-55d1-a50c-7939bbd78826"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StaticPolynomials = "62e018b1-6e46-5407-a5a7-97d4fbcae734"

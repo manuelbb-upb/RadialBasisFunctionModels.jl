@@ -9,6 +9,7 @@ using ThreadSafeDicts
 using Memoize: @memoize
 using StaticArrays
 
+import Flux.Zygote as Zyg
 using Flux.Zygote: Buffer, @adjoint
 
 # TODO also set Flux.trainable to make inner parameters trainable #src
@@ -38,12 +39,13 @@ abstract type RadialFunction <: Function end
 # Each Type that inherits from `RadialFunction` should implement 
 # an evaluation method.
 # It takes the radius/distance ``ρ = ρ(x) = \| x - x^i \|`` from 
-# ``x` to a specific center ``x^i``.
+# ``x`` to a specific center ``x^i``.
 (φ :: RadialFunction )( ρ :: Real ) :: Real = Nothing;
 
 # From an `RadialFunction` and a vector we can define a shifted kernel function.
 # We allow evaluation for statically sized vectors, too:
-const AnyVec{T} = Union{Vector{T}, SVector{I, T}, SizedVector{I,T,V}} where {I,V}
+const StatVec{T} = Union{SVector{I,T}, SizedVector{I,T,V}} where {I,V}
+const AnyVec{T} = Union{Vector{T}, StatVec{T}}
 
 struct ShiftedKernel <: Function
     φ :: RadialFunction
@@ -97,7 +99,7 @@ end
 
 A `RadialFunction` with 
 ```math 
-    φ(ρ) = (-1)^{ \\ceil{β} } ( 1 + (αρ)^2 )^β
+    φ(ρ) = (-1)^{ \\lceil β \\rceil } ( 1 + (αρ)^2 )^β
 ```
 """
 struct Multiquadric <: RadialFunction
@@ -147,7 +149,7 @@ end
 
 A `RadialFunction` with 
 ```math 
-    φ(ρ) = (-1)^{ \\ceil{β}/2 } ρ^β
+    φ(ρ) = (-1)^{ \\lceil β \\rceil /2 } ρ^β
 ```
 """
 struct Cubic <: RadialFunction 
@@ -324,7 +326,7 @@ The arguments are
 function coefficients( 
     sites :: Vector{ST}, 
     values :: Vector{VT}, 
-    kernels :: Vector{ShiftedKernel},
+    kernels :: AnyVec{ShiftedKernel},
     polys :: Vector{<:DynamicPolynomials.Polynomial} 
     ) where {ST,VT}
 
@@ -366,51 +368,20 @@ end
 
 # ### The Model Data Type
 
-# We now have all ingredients to define the model type.
-# We allow for vector valued data sites and determine multiple 
-# outputs if needed.
-
-# First, define some helper functions:
-
-function convert_list_of_vecs( vec_type :: Type, list_of_vecs :: Vector{<:Union{Vector,SVector}} )
-    return vec_type.(list_of_vecs)
-end
-
-## allow for providing scalar data
-function convert_list_of_vecs( vec_type :: Type, list_of_vecs :: Vector{<:Real} )
-    return convert_list_of_vecs( vec_type, [ [x,] for x ∈ list_of_vecs ] )
-end
-
-## do nothing if types alreay match
-function convert_list_of_vecs(::Type{F}, list_of_vecs :: Vector{F} ) where F
-    return list_of_vecs
-end
-
-"Return array of `ShiftedKernel`s based on `φ` with centers from `sites`."
-function make_kernels( φ :: RadialFunction, sites :: AnyVec )
-    return [ ShiftedKernel(φ, c) for c ∈ sites ]
-end
-
-"Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `sites`."
-function make_kernels( φ_arr :: Vector{RadialFunction}, sites :: AnyVec )
-    @assert length(φ_arr) == length(sites) "Provide as many functions `φ_arr` as `sites`."
-    return [ ShiftedKernel(φ[i], sites[i]) for i = eachindex( φ_arr ) ]
-end
-
-# The actual data does *not* store the coefficients, but rather:
+# The actual model type does *not* store the coefficients, but rather:
 # * a `RBFOutputSystem`s and
 # * a `PolynomialSystem` (~ vector of polynomials) with `num_outputs` entries.
 # This should proof beneficial for evaluation and differentiation.
 
 struct RBFOutputSystem{S}
-    kernels :: Vector{ShiftedKernel}
+    kernels :: AnyVec{ShiftedKernel}
     weights :: Union{Matrix, SMatrix, SizedMatrix}
 
     num_outputs :: Int 
     num_centers :: Int
 end
 
-const NumberOrVector{T} = Union{Real,Vector{T}, SVector{I, T}} where I;
+const NumberOrVector = Union{<:Real, AnyVec{<:Real}}
 
 "Return a vector containing the distance of `x` to each kernel center of `RBFOutputSystem`."
 function _distances( rbf ::  RBFOutputSystem, x :: NumberOrVector ) 
@@ -418,19 +389,18 @@ function _distances( rbf ::  RBFOutputSystem, x :: NumberOrVector )
 end
 
 "Return the vector [ φ₁(ρ₁) … φₙ(ρₙ) ] = [ k1(x) … kn(x) ]"
-function _kernel_vector( rbf :: RBFOutputSystem, ρ :: Vector{<:Real} )
-    return [ rbf.kernels[i].φ(ρ[i]) for i = 1 : length(ρ) ]
+function _kernel_vector( rbf :: RBFOutputSystem, ρ :: AnyVec{<:Real} )
+    ## enumerate does not work as intended for StatVec's
+    ## however, eachindex should result in a StatVec return type too
+    ##return [ rbf.kernels[i].φ(ρ[i]) for i = eachindex(ρ) ] ## Not Zygote friendly
+    map.( getfield.(rbf.kernels, :φ), ρ)
 end
+
+Base.vec( x :: Number ) = [x,]
 
 ## evaluate at distances, static StaticArrays are used
 "Evaluate (output `ℓ` of) `rbf` by plugging in distance `ρ[i]` in radial function `o.kernels[i].φ`."
-function _eval_rbfs_at_ρ( rbf ::  RBFOutputSystem{true}, ρ :: Vector{<:Real}, ℓ :: Union{Int,Nothing} = nothing )
-    W, n_out = isnothing(ℓ) ? (rbf.weights, rbf.num_outputs) : (rbf.weights[:, ℓ],1)  # should be sized
-    vec(SVector{rbf.num_centers}( _kernel_vector( rbf, ρ ) )'W)
-end
-
-## evaluate at distances, normal Vectors are used 
-function _eval_rbfs_at_ρ(rbf :: RBFOutputSystem{false}, ρ :: Vector{<:Real}, ℓ :: Union{Int,Nothing} = nothing ) 
+function _eval_rbfs_at_ρ(rbf :: RBFOutputSystem, ρ :: AnyVec{<:Real}, ℓ :: Union{Int,Nothing} = nothing ) 
     W = isnothing(ℓ) ? rbf.weights : rbf.weights[:, ℓ]
     vec(_kernel_vector(rbf, ρ)'W)
 end
@@ -451,21 +421,61 @@ _eval_rbf_sys( ::Val{false}, rbf :: RBFOutputSystem, x :: NumberOrVector, ℓ ::
 # It contains a list of StaticPolynomials and a flag indicating a static return type.
 
 struct PolySystem{S}
-    polys :: Vector{StaticPolynomials.Polynomial}
+    polys :: AnyVec{<:StaticPolynomials.Polynomial}
     num_outputs :: Int
+
+    function PolySystem{S}( polys :: AnyVec, num_outputs ) where S
+        @assert length(polys) == num_outputs "Provide as many polynomials as outputs."
+        if S == true && !( polys isa StatVec )
+            polys = SizedVector{length(num_outputs)}(polys)
+        end 
+        return new{S}(polys,num_outputs)
+    end
 end
 
-_eval_polys( poly_sys :: PolySystem{false}, x :: AnyVec, ℓ :: Nothing ) = [ p(x) for p ∈ poly_sys.polys ]
-_eval_polys( poly_sys :: PolySystem{true}, x :: AnyVec, ℓ :: Nothing ) = SVector{poly_sys.num_outputs}([ p(x) for p ∈ poly_sys.polys ])
-_eval_polys( poly_sys :: PolySystem{false}, x :: AnyVec, ℓ :: Int ) = [ poly_sys.polys[ℓ](x) ]
-_eval_polys( poly_sys :: PolySystem{true}, x :: AnyVec, ℓ :: Int ) = SVector{1}([ poly_sys.polys[ℓ](x) ])
+_eval_polys( poly_sys :: PolySystem, x :: AnyVec, ℓ :: Nothing ) = [ p(x) for p ∈ poly_sys.polys ]
+_eval_polys( poly_sys :: PolySystem, x :: AnyVec, ℓ :: Int ) = [poly_sys.polys[ℓ](x),]
 ## StaticPolynomials cannot handle scalar input for variable vectors:
-_eval_polys( poly_sys :: PolySystem{false}, x :: Real, ℓ :: Union{Nothing, Int}) = _eval_polys(poly_sys,[x,],ℓ)
-_eval_polys( poly_sys :: PolySystem{true}, x :: Real, ℓ :: Union{Nothing, Int}) = _eval_polys(poly_sys,SVector{1}([x,]),ℓ)
+_eval_polys( poly_sys :: PolySystem, x :: Real, ℓ :: Union{Nothing, Int}) = _eval_polys(poly_sys,[x,],ℓ)
 
 ## called below, from RBFModel, vector output and scalar output
 _eval_poly_sys( ::Val{true}, poly_sys, x, ℓ) = _eval_polys( poly_sys, x, ℓ)
 _eval_poly_sys( ::Val{false}, poly_sys, x, ℓ) = _eval_polys( poly_sys, x, ℓ)[end]
+
+# We now have all ingredients to define the model type.
+# We allow for vector valued data sites and determine multiple 
+# outputs if needed.
+
+# First, define some helper functions to redefine the training data internally:
+
+"Return a list of the elements of type `vec_type` applied to all elements from `list_of_vecs`."
+function convert_list_of_vecs( vec_type :: Type, list_of_vecs :: Vector{<:AnyVec} )
+    return vec_type.(list_of_vecs)
+end
+
+## allow for providing scalar data
+function convert_list_of_vecs( vec_type :: Type, list_of_nums :: Vector{<:Real} )
+    return convert_list_of_vecs( vec_type, [ [x,] for x ∈ list_of_nums ] )
+end
+
+## do nothing if types alreay match
+function convert_list_of_vecs(::Type{F}, list_of_vecs :: Vector{F} ) where F
+    return list_of_vecs
+end
+
+# Helpers to create kernel functions. Both should return SizedArrays if 
+
+function _make_kernels( φ_arr :: Union{RadialFunction, AnyVec{RadialFunction}}, sites :: Vector )
+    if φ_arr isa RadialFunction
+        φ_arr = [φ_arr for i = 1:length(sites)]
+    end
+    ## @assert length(φ_arr) == length(sites)
+    return [ ShiftedKernel(φ_arr[i], sites[i]) for i = eachindex( φ_arr ) ]
+end
+
+"Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `sites`."
+make_kernels( φ_arr, sites :: Vector{<:Vector} ) = _make_kernels( φ_arr, sites )
+make_kernels( φ_arr, sites :: Vector{<:StatVec} ) = SVector{length(sites)}(_make_kernels(φ_arr,sites))
 
 # The final model struct then is:
 
@@ -614,10 +624,50 @@ function RBFInterpolationModel(
 
 end
 
-
 # ## Derivatives 
+
+# The easiest way to provide derivatives is via Automatic Differentiation.
+# We have imported `Flux.Zygote` as `Zyg.` this allows us to define the following methods:
+
+# * A function to return the jacobian:
+"Return the jacobion of `rbf` at `x` (using Zygote)."
+function auto_jac( rbf :: RBFModel, x :: NumberOrVector )
+    Zyg.jacobian( rbf, x )[1]
+end
+
+# * A function to evaluate the model and return the jacobian at the same time:
+function eval_and_auto_jac( rbf :: RBFModel, x :: NumberOrVector )
+    y, back = Zyg._pullback( rbf, x )
+
+    T = eltype(y)
+    n = length(y)
+    jac = zeros(T, n, length(x) )
+    for i = 1 : length(x)
+        @show e = [ zeros(T, i -1 ); T(1); zeros(T, n - i )  ]
+        @show back(e)[2]
+        jac[i, :] .= back(e)[2]
+    end
+
+    return y, jac
+end
+
+# * A function to return the gradient of a specific output: 
+"Return gradient of output `ℓ` of model `rbf` at point `x` (using Zygote)."
+function auto_grad( rbf :: RBFModel, x :: NumberOrVector, ℓ :: Union{Int,Nothing} = nothing)
+    Zyg.gradient( χ -> rbf(χ, ℓ)[end], x )[1]
+end
+
+# * A function to evaluate the function and return the gradient 
+function eval_and_auto_grad( rbf :: RBFModel, x :: NumberOrVector, ℓ :: Union{Int,Nothing} = nothing )
+    y, back = Zyg._pullback( χ -> rbf(χ, ℓ)[end], x)
+
+    grad = back( one(y) )[2]
+    return y,grad
+end
+
+# But we don't need `Zygote`, because we can derive the gradients ourselves.
 # Assume that ``φ`` is two times continuously differentiable. \ 
-# What is the gradient of an RBF model? 
+# What is the gradient of a scalar RBF model? 
 # Using the chain rule and ``ξ = x - x^j`` we get 
 # ```math 
     # \dfrac{∂}{∂ξ_i} \left( φ(\| ξ \|) \right)
@@ -635,6 +685,15 @@ end
 # ```math
     # ∇r(x) = \sum_{i=1}^N \frac{w_i φ\prime( \| x - x^i \| )}{\| x - x^i \|} (x - x^i) + ∇p(x)
 # ```
+
+# Hence, we need the derivatives of our `RadialFunctions`.
+
+df(φ :: Gaussian, ρ :: Real) = - 2 * φ.α * φ( ρ )
+df(φ :: Multiquadric, ρ :: Real ) = (-1)^(ceil(Int, φ.β)) * 2 * φ.α * φ.β * ρ * ( 1 + (φ.α * ρ)^2 )^(φ.β - 1)
+df(φ :: InverseMultiquadric, ρ :: Real ) = - 2 * φ.α^2 * φ.β * ρ * ( 1 + (φ.α * ρ)^2 )^(-φ.β - 1)
+df(φ :: Cubic, ρ :: Real ) = (-1)^(ceil(Int, φ.β/2)) * φ.β * ρ^(φ.β - 1)
+df(φ :: ThinPlateSpline, ρ :: Real ) = ρ == 0 ? 0 : (-1)^(φ.k+1) * ρ^(2*φ.k - 1) * ( 2 * φ.k * log(ρ) + 1)
+
 # For the Hessian ``Hr \colon ℝ^n \to ℝ^{n\times n}`` we need the gradients of the 
 # component functions 
 # ```math 
@@ -704,6 +763,8 @@ end
 # For automatic differentiation we need custom adjoints for some `StaticArrays`:
 @adjoint (T::Type{<:StaticArrays.SizedMatrix})(x::AbstractMatrix) = T(x), dv -> (nothing, dv)
 @adjoint (T::Type{<:StaticArrays.SVector})(x::AbstractVector) = T(x), dv -> (nothing, dv)
+@adjoint (T::Type{<:StaticArrays.SizedVector})(x::AbstractVector) = T(x), dv->(nothing, dv)
+
 # [^wild_diss]: “Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.
 # [^wendland]: “Scattered Data Approximation”, Wendland
 

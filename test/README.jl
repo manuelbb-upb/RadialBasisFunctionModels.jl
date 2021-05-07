@@ -38,9 +38,9 @@ rbf = RBFInterpolationModel( X, Y, φ, 1)
 
 # We can evaluate `rbf` at the data points; 
 # By default, vectors are returned and for small dimensions 
-# `StaticArrays` are used.
+# `StaticArrays` are used. The results will be SVectors or SizedVectors
 Z = rbf.(X)
-@test Z isa Vector{RBFModels.SVector{1,Float64}}
+@test Z isa Vector{<:RBFModels.StatVec}
 @test length(Z[1]) == 1
 # The results should be close to the data labels `Y`.
 @test all( isapprox(Z[i][1], Y[i]; atol = 1e-10) for i = 1 : length(Z) )
@@ -56,7 +56,7 @@ Z_scalar = rbf_scalar.( X )
 @test all( Z_scalar[i] == Z[i][1] for i = 1 : length(Z) )
 
 # Also, the `StaticArrays` can be disabled:
-rbf_vec = RBFInterpolationModel( X, Y, φ, 0; static_arrays = false)
+rbf_vec = RBFInterpolationModel( X, Y, φ, 1; static_arrays = false)
 Z_vec = rbf_vec.(X)
 @test Z_vec isa Vector{Vector{Float64}}
 
@@ -69,5 +69,20 @@ Z_vec = rbf_vec.(X)
 # The data precision of the training data is preserved when evaluating.
 X_f0 = Float32.(X)
 Y_f0 = f.(X_f0)
-rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 0; static_arrays = false ) 
+rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 1; static_arrays = false ) 
 @test rbf_f0.(X_f0) isa Vector{Vector{Float32}}
+
+# Benchmarks for the small 1in1out data set. Construction:
+creation_times = [
+    median(@benchmark( RBFInterpolationModel( X, Y, φ, 1))),
+    median(@benchmark( RBFInterpolationModel( X, Y, φ, 1; vector_output = false))),
+    median(@benchmark( RBFInterpolationModel( X, Y, φ, 1; static_arrays = false))),
+    median(@benchmark( RBFInterpolationModel( X_f0, Y_f0, φ, 1)))
+]
+# Evaluation:
+eval_times = [
+    median( @benchmark( rbf.(X) ) ),
+    median( @benchmark( rbf_scalar.(X) ) ),
+    median( @benchmark( rbf_vec.(X) ) ),
+    median( @benchmark( rbf_f0.(X_f0) ) )
+]

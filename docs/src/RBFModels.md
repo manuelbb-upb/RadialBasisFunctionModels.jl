@@ -110,7 +110,7 @@ parameter. We can actually generalize it to the following form:
 
 A `RadialFunction` with
 ```math
-    φ(ρ) = (-1)^{ \\ceil{β} } ( 1 + (αρ)^2 )^β
+    φ(ρ) = (-1)^{ \\lceil β \\rceil } ( 1 + (αρ)^2 )^β
 ```
 """
 struct Multiquadric <: RadialFunction
@@ -166,7 +166,7 @@ It can also be generalized:
 
 A `RadialFunction` with
 ```math
-    φ(ρ) = (-1)^{ \\ceil{β}/2 } ρ^β
+    φ(ρ) = (-1)^{ \\lceil β \\rceil /2 } ρ^β
 ```
 """
 struct Cubic <: RadialFunction

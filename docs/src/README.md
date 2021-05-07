@@ -1,3 +1,7 @@
+```@meta
+EditURL = "<unknown>/test/README.jl"
+```
+
 # RBFModels
 
 [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://manuelbb-upb.github.io/RBFModels.jl/stable)
@@ -14,13 +18,13 @@ and nonlinear data.
 
 First load the `RBFModels` package.
 
-````julia
+````@example README
 using RBFModels
 ````
 
 We also use `Test` to validate the results and `BenchmarkTools` for comparisons.
 
-````julia
+````@example README
 using Test
 using BenchmarkTools
 ````
@@ -32,26 +36,26 @@ The main type `RBFModel` uses vectors internally, but we can easily
 interpolate 1-dimensional data.
 Assume, e.g., we want to interpolate ``f:ℝ → ℝ, f(x) = x^2``:
 
-````julia
+````@example README
 f = x -> x^2
 ````
 
 Define 5 training sites `X` and evaluate to get `Y`
 
-````julia
+````@example README
 X = collect( LinRange(-4,4,5) )
 Y = f.(X)
 ````
 
 Initialize the `RadialFunction` to use for the RBF model:
 
-````julia
+````@example README
 φ = Multiquadric()
 ````
 
 Construct an interpolating model with linear polynomial tail:
 
-````julia
+````@example README
 rbf = RBFInterpolationModel( X, Y, φ, 1)
 ````
 
@@ -59,7 +63,7 @@ We can evaluate `rbf` at the data points;
 By default, vectors are returned and for small dimensions
 `StaticArrays` are used.
 
-````julia
+````@example README
 Z = rbf.(X)
 @test Z isa Vector{RBFModels.SVector{1,Float64}}
 @test length(Z[1]) == 1
@@ -67,20 +71,20 @@ Z = rbf.(X)
 
 The results should be close to the data labels `Y`.
 
-````julia
+````@example README
 @test all( isapprox(Z[i][1], Y[i]; atol = 1e-10) for i = 1 : length(Z) )
 ````
 
 `X` contains Floats, but we can pass them to `rbf`.
 Usually you have feature vectors and they are always supported:
 
-````julia
+````@example README
 @test rbf( [ X[1], ] ) == Z[1]
 ````
 
 For 1 dimensional labels we can actually disable the vector output:
 
-````julia
+````@example README
 rbf_scalar = RBFInterpolationModel( X, Y, φ, 1; vector_output = false)
 Z_scalar = rbf_scalar.( X )
 @test Z_scalar isa Vector{Float64}
@@ -89,7 +93,7 @@ Z_scalar = rbf_scalar.( X )
 
 Also, the `StaticArrays` can be disabled:
 
-````julia
+````@example README
 rbf_vec = RBFInterpolationModel( X, Y, φ, 1; static_arrays = false)
 Z_vec = rbf_vec.(X)
 @test Z_vec isa Vector{Vector{Float64}}
@@ -98,7 +102,7 @@ Z_vec = rbf_vec.(X)
 Whether `StaticArrays` are used and if vectors are returned is
 indicated by the type flags:
 
-````julia
+````@example README
 @test rbf isa RBFModel{true, true}          # SVectors and vector output
 @test rbf_scalar isa RBFModel{true, false}  # SVectors and scalar output
 @test rbf_vec isa RBFModel{false, true}     # Vectors and vector output
@@ -106,7 +110,7 @@ indicated by the type flags:
 
 The data precision of the training data is preserved when evaluating.
 
-````julia
+````@example README
 X_f0 = Float32.(X)
 Y_f0 = f.(X_f0)
 rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 1; static_arrays = false )
@@ -115,7 +119,7 @@ rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 1; static_arrays = false )
 
 Benchmarks for the small 1in1out data set. Construction:
 
-````julia
+````@example README
 creation_times = [
     median(@benchmark( RBFInterpolationModel( X, Y, φ, 1))),
     median(@benchmark( RBFInterpolationModel( X, Y, φ, 1; vector_output = false))),
@@ -126,7 +130,7 @@ creation_times = [
 
 Evaluation:
 
-````julia
+````@example README
 eval_times = [
     median( @benchmark( rbf.(X) ) ),
     median( @benchmark( rbf_scalar.(X) ) ),

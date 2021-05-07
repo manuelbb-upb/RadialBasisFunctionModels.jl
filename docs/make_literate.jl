@@ -4,6 +4,7 @@ current_env = Base.load_path()[1]
 Pkg.activate(joinpath(@__DIR__))
 using Literate 
 
+#%%
 Literate.markdown(
     joinpath( @__DIR__, "..", "src", "RBFModels.jl"), 
     joinpath( @__DIR__, "src" );    
@@ -14,9 +15,16 @@ Literate.markdown(
 #%% make readme
 Literate.markdown(
     joinpath( @__DIR__, "..", "test", "README.jl"), 
-    joinpath( @__DIR__, ".." );    
-    documenter = false,
+    joinpath( @__DIR__, "src" );    
+    documenter = true,
     codefence = "````@example README" => "````"
 )
+Literate.markdown(
+    joinpath( @__DIR__, "..", "test", "README.jl"), 
+    joinpath( @__DIR__, ".." );    
+    documenter = false,
+    codefence = "````julia" => "````"
+)
+
 #%%
 Pkg.activate(current_env)
