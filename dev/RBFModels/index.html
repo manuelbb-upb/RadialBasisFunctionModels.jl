@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Module Description · RBFModels.jl</title><link rel="canonical" href="https://manuelbb-upb.github.io/RBFModels.jl/RBFModels/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">RBFModels.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../README/">Readme</a></li><li class="is-active"><a class="tocitem" href>Module Description</a><ul class="internal"><li><a class="tocitem" href="#Some-Radial-Functions"><span>Some Radial Functions</span></a></li><li><a class="tocitem" href="#Solving-the-Interpolation-System"><span>Solving the Interpolation System</span></a></li><li><a class="tocitem" href="#Derivatives"><span>Derivatives</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Module Description</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Module Description</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/manuelbb-upb/RBFModels.jl/blob/master/src/RBFModels.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><p>Dependencies of this module:</p><pre><code class="language-julia">using DynamicPolynomials, StaticPolynomials
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Module Description · RBFModels.jl</title><link rel="canonical" href="https://manuelbb-upb.github.io/RBFModels.jl/RBFModels/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit">RBFModels.jl</span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../README/">Readme</a></li><li class="is-active"><a class="tocitem" href>Module Description</a><ul class="internal"><li><a class="tocitem" href="#Some-Radial-Functions"><span>Some Radial Functions</span></a></li><li><a class="tocitem" href="#Solving-the-Interpolation-System"><span>Solving the Interpolation System</span></a></li><li><a class="tocitem" href="#Derivatives"><span>Derivatives</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Module Description</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Module Description</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/manuelbb-upb/RBFModels.jl/blob/master/src/RBFModels.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><pre><code class="language-julia">export auto_grad, auto_jac, grad, jac</code></pre><p>Dependencies of this module:</p><pre><code class="language-julia">using DynamicPolynomials, StaticPolynomials
 using ThreadSafeDicts
 using Memoize: @memoize
 using StaticArrays
@@ -126,7 +126,7 @@ cpd_order( φ :: Cubic ) = ceil( Int, φ.β/2 )
 cpd_order( φ :: ThinPlateSpline ) = φ.k + 1</code></pre><pre class="documenter-example-output">cpd_order (generic function with 5 methods)</pre><p>The dimension of <span>$Π_{d}(ℝ^n)$</span>, the space of <span>$n$</span>-variate polynomials of degree at most <span>$d$</span>, is</p><p class="math-container">\[   Q = \binom{n+d}{n}\]</p><p>which equates to <span>$Q = n+1$</span> for linear and <span>$Q = (n+2)(n+1)/2$</span> for quadratic polynomials. <br/>We need <span>$\{p_j\}_{1 \le j \le Q}$</span>, a basis of <span>$Π_d(ℝ^n)$</span>.</p><p>The canonical basis is <span>$x_1^{α_1} x_2^{α_2} … x_n^{α_n}$</span> with <span>$α_i ≥ 0$</span> and <span>$Σ_i α_i ≤ d$</span>. For <span>$\bar{d} \le d$</span> we can recursively get the non-negative integer solutions for <span>$Σ_i α_i = \bar{d}$</span> with the following function:</p><pre><code class="language-julia">@doc &quot;&quot;&quot;
     non_negative_solutions( d :: Int, n :: Int)
 
-Return array of solution vectors [x_1, …, x_n] to the equation
+Return array of solution vectors ``[x_1, …, x_n]`` to the equation
 ``x_1 + … + x_n = d``
 where the variables are non-negative integers.
 &quot;&quot;&quot;
@@ -239,7 +239,7 @@ function coefficients(
     else
         return coeff[1 : N, :], coeff[N+1 : end, :]
     end
-end</code></pre><pre class="documenter-example-output">Main.ex-RBFModels.coefficients</pre><h3 id="The-Model-Data-Type"><a class="docs-heading-anchor" href="#The-Model-Data-Type">The Model Data Type</a><a id="The-Model-Data-Type-1"></a><a class="docs-heading-anchor-permalink" href="#The-Model-Data-Type" title="Permalink"></a></h3><p>The actual model type does <em>not</em> store the coefficients, but rather:</p><ul><li>a <code>RBFOutputSystem</code>s and</li><li>a <code>PolynomialSystem</code> (~ vector of polynomials) with <code>num_outputs</code> entries.</li></ul><p>This should proof beneficial for evaluation and differentiation.</p><pre><code class="language-julia">struct RBFOutputSystem{S}
+end</code></pre><pre class="documenter-example-output">Main.ex-RBFModels.coefficients</pre><h3 id="The-Model-Data-Type"><a class="docs-heading-anchor" href="#The-Model-Data-Type">The Model Data Type</a><a id="The-Model-Data-Type-1"></a><a class="docs-heading-anchor-permalink" href="#The-Model-Data-Type" title="Permalink"></a></h3><p>The actual model type does <em>not</em> store the coefficients, but rather:</p><ul><li>a <code>RBFOutputSystem</code>s and</li><li>a <code>PolynomialSystem</code> (~ vector of polynomials) with <code>num_outputs</code> entries.</li></ul><pre><code class="language-julia">struct RBFOutputSystem{S}
     kernels :: AnyVec{ShiftedKernel}
     weights :: Union{Matrix, SMatrix, SizedMatrix}
 
@@ -247,60 +247,57 @@ end</code></pre><pre class="documenter-example-output">Main.ex-RBFModels.coeffic
     num_centers :: Int
 end
 
-const NumberOrVector = Union{&lt;:Real, AnyVec{&lt;:Real}}
+const NumberOrVector = Union{&lt;:Real, AnyVec{&lt;:Real}}</code></pre><pre class="documenter-example-output">Union{var&quot;#s517&quot;, Union{Vector{var&quot;#s516&quot;}, Union{StaticArrays.SVector{I, var&quot;#s516&quot;}, StaticArrays.SizedVector{I, var&quot;#s516&quot;, V}} where {I, V}} where var&quot;#s516&quot;&lt;:Real} where var&quot;#s517&quot;&lt;:Real</pre><p>We provide methods to evaluate the RBF part of a model, that can also take the distance vector <span>$ρ(x) = [\| x - x^1 \|, …, \| x - x^N \|]$</span>. This way, we can save evaluations later, when we evaluate and differentiate with the same function. <br/>There are a few helper functions:</p><pre><code class="language-julia">&quot;Return the list of difference vectors ``[x .- x^1, …, x - x^N]`` where ``x^i`` are the kernel centers of `rbf`.&quot;
+function _offsets( rbf :: RBFOutputSystem, x :: AnyVec )
+    return [ k.c .- x for k ∈ rbf.kernels ]
+end
 
 &quot;Return a vector containing the distance of `x` to each kernel center of `RBFOutputSystem`.&quot;
-function _distances( rbf ::  RBFOutputSystem, x :: NumberOrVector )
-    return [ norm2( k.c .- x ) for k ∈ rbf.kernels ]
+function _distances( rbf ::  RBFOutputSystem, x :: AnyVec )
+    return norm2.(_offsets( rbf, x) )
 end
 
 &quot;Return the vector [ φ₁(ρ₁) … φₙ(ρₙ) ] = [ k1(x) … kn(x) ]&quot;
 function _kernel_vector( rbf :: RBFOutputSystem, ρ :: AnyVec{&lt;:Real} )
-    # enumerate does not work as intended for StatVec&#39;s
-    # however, eachindex should result in a StatVec return type too
-    ##return [ rbf.kernels[i].φ(ρ[i]) for i = eachindex(ρ) ] ## Not Zygote friendly
     map.( getfield.(rbf.kernels, :φ), ρ)
 end
 
-Base.vec( x :: Number ) = [x,]
-
-# evaluate at distances, static StaticArrays are used
-&quot;Evaluate (output `ℓ` of) `rbf` by plugging in distance `ρ[i]` in radial function `o.kernels[i].φ`.&quot;
+# Define vectorization for a scalar.
+Base.vec( x :: Number ) = [x,]</code></pre><p>The final method looks like this:</p><pre><code class="language-julia">&quot;Evaluate (output `ℓ` of) `rbf` by plugging in distance `ρ[i]` in radial function `o.kernels[i].φ`.&quot;
 function _eval_rbfs_at_ρ(rbf :: RBFOutputSystem, ρ :: AnyVec{&lt;:Real}, ℓ :: Union{Int,Nothing} = nothing )
     W = isnothing(ℓ) ? rbf.weights : rbf.weights[:, ℓ]
     vec(_kernel_vector(rbf, ρ)&#39;W)
-end
-
-&quot;Evaluate `rbf :: RBFOutputSystem` at site `x`.&quot;
-function ( rbf ::  RBFOutputSystem )( x :: NumberOrVector, ℓ :: Union{Int,Nothing} )
+end</code></pre><pre class="documenter-example-output">Main.ex-RBFModels._eval_rbfs_at_ρ</pre><p>Of course, it is easy to evaluate, when only the argument <code>x</code> is provided.</p><pre><code class="language-julia">&quot;Evaluate `rbf :: RBFOutputSystem` at site `x`. A single output can be specified with `ℓ`.&quot;
+function ( rbf ::  RBFOutputSystem )( x :: AnyVec, ℓ :: Union{Int,Nothing} )
     ρ = _distances( rbf, x )        # calculate distance vector
     return _eval_rbfs_at_ρ( rbf, ρ, ℓ ) # eval at distances
-end
-
-# called by RBFModel{S,true}, vector output
-_eval_rbf_sys(  ::Val{true}, rbf :: RBFOutputSystem, x :: NumberOrVector, ℓ :: Union{Int,Nothing} = nothing ) = rbf(x,ℓ)
+end</code></pre><pre class="documenter-example-output">Main.ex-RBFModels.RBFOutputSystem</pre><p>These methods are used internally:</p><pre><code class="language-julia"># called by RBFModel{S,true}, vector output
+_eval_rbf_sys(  ::Val{true}, rbf :: RBFOutputSystem, x :: AnyVec, ℓ :: Union{Int,Nothing} = nothing ) = rbf(x,ℓ)
 # called by RBFModel{S,false}, scalar output
-_eval_rbf_sys( ::Val{false}, rbf :: RBFOutputSystem, x :: NumberOrVector, ℓ :: Union{Int,Nothing} = nothing ) = rbf(x,ℓ)[end]</code></pre><pre class="documenter-example-output">_eval_rbf_sys (generic function with 4 methods)</pre><p>For evaluating polynomials, we build our own <code>PolySystem</code>: It contains a list of StaticPolynomials and a flag indicating a static return type.</p><pre><code class="language-julia">struct PolySystem{S}
+_eval_rbf_sys( ::Val{false}, rbf :: RBFOutputSystem, x :: AnyVec, ℓ :: Union{Int,Nothing} = nothing ) = rbf(x,ℓ)[end]</code></pre><pre class="documenter-example-output">_eval_rbf_sys (generic function with 4 methods)</pre><p>For evaluating polynomials, we build our own <code>PolySystem</code>: It contains a list of StaticPolynomials and a flag indicating a static return type.</p><pre><code class="language-julia">struct PolySystem{S}
     polys :: AnyVec{&lt;:StaticPolynomials.Polynomial}
     num_outputs :: Int
 
     function PolySystem{S}( polys :: AnyVec, num_outputs ) where S
         @assert length(polys) == num_outputs &quot;Provide as many polynomials as outputs.&quot;
         if S == true &amp;&amp; !( polys isa StatVec )
-            polys = SizedVector{length(num_outputs)}(polys)
+            polys = SizedVector{num_outputs}(polys)
         end
         return new{S}(polys,num_outputs)
     end
 end
 
-_eval_polys( poly_sys :: PolySystem, x :: AnyVec, ℓ :: Nothing ) = [ p(x) for p ∈ poly_sys.polys ]
-_eval_polys( poly_sys :: PolySystem, x :: AnyVec, ℓ :: Int ) = [poly_sys.polys[ℓ](x),]
-# StaticPolynomials cannot handle scalar input for variable vectors:
-_eval_polys( poly_sys :: PolySystem, x :: Real, ℓ :: Union{Nothing, Int}) = _eval_polys(poly_sys,[x,],ℓ)
+function ( poly_sys :: PolySystem)( x :: AnyVec, ℓ :: Nothing )
+    [ p(x) for p ∈ poly_sys.polys ]
+end
+function ( poly_sys :: PolySystem )( x :: AnyVec, ℓ :: Int )
+    [ poly_sys.polys[ℓ](x),]
+end
 
 # called below, from RBFModel, vector output and scalar output
-_eval_poly_sys( ::Val{true}, poly_sys, x, ℓ) = _eval_polys( poly_sys, x, ℓ)
-_eval_poly_sys( ::Val{false}, poly_sys, x, ℓ) = _eval_polys( poly_sys, x, ℓ)[end]</code></pre><pre class="documenter-example-output">_eval_poly_sys (generic function with 2 methods)</pre><p>We now have all ingredients to define the model type. We allow for vector valued data sites and determine multiple outputs if needed.</p><p>First, define some helper functions to redefine the training data internally:</p><pre><code class="language-julia">&quot;Return a list of the elements of type `vec_type` applied to all elements from `list_of_vecs`.&quot;
+const NothInt = Union{Nothing, Int}
+_eval_poly_sys( ::Val{true}, poly_sys :: PolySystem, x :: AnyVec , ℓ :: NothInt ) = poly_sys( x, ℓ)
+_eval_poly_sys( ::Val{false}, poly_sys :: PolySystem, x :: AnyVec, ℓ :: NothInt ) = poly_sys( x, ℓ)[end]</code></pre><pre class="documenter-example-output">_eval_poly_sys (generic function with 2 methods)</pre><p>We now have all ingredients to define the model type. We allow for vector valued data sites and determine multiple outputs if needed.</p><p>First, define some helper functions to redefine the training data internally:</p><pre><code class="language-julia">&quot;Return a list of the elements of type `vec_type` applied to all elements from `list_of_vecs`.&quot;
 function convert_list_of_vecs( vec_type :: Type, list_of_vecs :: Vector{&lt;:AnyVec} )
     return vec_type.(list_of_vecs)
 end
@@ -313,11 +310,10 @@ end
 # do nothing if types alreay match
 function convert_list_of_vecs(::Type{F}, list_of_vecs :: Vector{F} ) where F
     return list_of_vecs
-end</code></pre><pre class="documenter-example-output">convert_list_of_vecs (generic function with 3 methods)</pre><p>Helpers to create kernel functions. Both should return SizedArrays if</p><pre><code class="language-julia">function _make_kernels( φ_arr :: Union{RadialFunction, AnyVec{RadialFunction}}, sites :: Vector )
+end</code></pre><pre class="documenter-example-output">convert_list_of_vecs (generic function with 3 methods)</pre><p>Helpers to create kernel functions. Should return <code>SVector</code> when appropriate.</p><pre><code class="language-julia">function _make_kernels( φ_arr :: Union{RadialFunction, AnyVec{RadialFunction}}, sites :: Vector )
     if φ_arr isa RadialFunction
         φ_arr = [φ_arr for i = 1:length(sites)]
     end
-    # @assert length(φ_arr) == length(sites)
     return [ ShiftedKernel(φ_arr[i], sites[i]) for i = eachindex( φ_arr ) ]
 end
 
@@ -345,11 +341,35 @@ struct RBFModel{S,V}
     num_centers :: Int
 end
 
-function (mod :: RBFModel{S,V} )( x :: NumberOrVector, ℓ :: Union{Nothing,Int} = nothing ) where{S,V}
+function Base.show( io :: IO, mod :: RBFModel{S,V} ) where {S,V}
+    compact = get(io, :compact, false)
+    if compact
+        print(io, &quot;$(mod.num_vars)D$(mod.num_outputs)D-RBFModel{$(S),$(V)&quot;)
+    else
+        print(io, &quot;RBFModel\n&quot;)
+        if S print(io, &quot;* using StaticArrays\n&quot;) end
+        if V
+            print(io, &quot;* with vector output\n&quot;)
+        else
+            print(io, &quot;* with scalar output\n&quot;)
+        end
+        print(io, &quot;* with $(mod.num_centers) centers\n&quot;)
+        print(io, &quot;* mapping from ℝ^$(mod.num_vars) to ℝ^$(mod.num_outputs).&quot;)
+    end
+end
+
+
+function (mod :: RBFModel{S,V} )( x :: AnyVec, ℓ :: NothInt = nothing ) where{S,V}
     rbf_eval = _eval_rbf_sys( Val(V), mod.rbf_sys, x, ℓ )
     poly_eval = _eval_poly_sys( Val(V), mod.poly_sys, x, ℓ )
 
     return rbf_eval .+ poly_eval
+end
+
+# scalar input
+function (mod :: RBFModel)(x :: Real, ℓ :: NothInt = nothing )
+    @assert mod.num_vars == 1 &quot;The model has more than 1 inputs. Provide a vector `x`, not a number.&quot;
+    mod( [x,], ℓ)
 end</code></pre><p>The <code>RBFInterpolationModel</code> constructor takes data sites and values and return an <code>RBFModel</code> that interpolates these points. We allow for passing scalar data and transform it internally.</p><pre><code class="language-julia">&quot;&quot;&quot;
     RBFInterpolationModel( sites :: Vector{VS}, values :: Vector{VT}, φ, poly_deg = 1;
         static_arrays = nothing, vector_output = true ) where {VS&lt;:NumberOrVector, VT&lt;:NumberOrVector}
@@ -411,7 +431,7 @@ function RBFInterpolationModel(
     poly_sys = PolySystem{static_arrays}( poly_vec, num_outputs )
 
     # vector output? (dismiss user choice if labels are vectors)
-    vec_output = num_outputs == 1 ? vector_output : false
+    vec_output = num_outputs == 1 ? vector_output : true
 
     # build RBF system
     num_centers = length(sites)
@@ -455,7 +475,7 @@ function RBFInterpolationModel(
 
     return RBFInterpolationModel( s̃ides, ṽalues, φ, poly_deg; kwargs... )
 
-end</code></pre><pre class="documenter-example-output">RBFInterpolationModel (generic function with 5 methods)</pre><h2 id="Derivatives"><a class="docs-heading-anchor" href="#Derivatives">Derivatives</a><a id="Derivatives-1"></a><a class="docs-heading-anchor-permalink" href="#Derivatives" title="Permalink"></a></h2><p>The easiest way to provide derivatives is via Automatic Differentiation. We have imported <code>Flux.Zygote</code> as <code>Zyg.</code> this allows us to define the following methods:</p><ul><li>A function to return the jacobian:</li></ul><pre><code class="language-julia">&quot;Return the jacobion of `rbf` at `x` (using Zygote).&quot;
+end</code></pre><pre class="documenter-example-output">RBFInterpolationModel (generic function with 5 methods)</pre><h2 id="Derivatives"><a class="docs-heading-anchor" href="#Derivatives">Derivatives</a><a id="Derivatives-1"></a><a class="docs-heading-anchor-permalink" href="#Derivatives" title="Permalink"></a></h2><p>The easiest way to provide derivatives is via Automatic Differentiation. We have imported <code>Flux.Zygote</code> as <code>Zyg.</code> this allows us to define the following methods:</p><ul><li>A function to return the jacobian:</li></ul><pre><code class="language-julia">&quot;Return the jacobian of `rbf` at `x` (using Zygote).&quot;
 function auto_jac( rbf :: RBFModel, x :: NumberOrVector )
     Zyg.jacobian( rbf, x )[1]
 end</code></pre><pre class="documenter-example-output">Main.ex-RBFModels.auto_jac</pre><ul><li>A function to evaluate the model and return the jacobian at the same time:</li></ul><pre><code class="language-julia">function eval_and_auto_jac( rbf :: RBFModel, x :: NumberOrVector )
@@ -465,8 +485,7 @@ end</code></pre><pre class="documenter-example-output">Main.ex-RBFModels.auto_ja
     n = length(y)
     jac = zeros(T, n, length(x) )
     for i = 1 : length(x)
-        @show e = [ zeros(T, i -1 ); T(1); zeros(T, n - i )  ]
-        @show back(e)[2]
+        e = [ zeros(T, i -1 ); T(1); zeros(T, n - i )  ]
         jac[i, :] .= back(e)[2]
     end
 
@@ -478,18 +497,39 @@ end</code></pre><pre class="documenter-example-output">Main.ex-RBFModels.auto_gr
     y, back = Zyg._pullback( χ -&gt; rbf(χ, ℓ)[end], x)
 
     grad = back( one(y) )[2]
-    return y,grad
-end</code></pre><pre class="documenter-example-output">eval_and_auto_grad (generic function with 2 methods)</pre><p>But we don&#39;t need <code>Zygote</code>, because we can derive the gradients ourselves. Assume that <span>$φ$</span> is two times continuously differentiable. <br/>What is the gradient of a scalar RBF model? Using the chain rule and <span>$ξ = x - x^j$</span> we get</p><p class="math-container">\[\dfrac{∂}{∂ξ_i} \left( φ(\| ξ \|) \right)
+    return y, grad
+end</code></pre><pre class="documenter-example-output">eval_and_auto_grad (generic function with 2 methods)</pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The above methods will fail, if <code>x</code> is one of the rbf centers.</p></div></div><p>But we don&#39;t need <code>Zygote</code>, because we can derive the gradients ourselves. Assume that <span>$φ$</span> is two times continuously differentiable. <br/>What is the gradient of a scalar RBF model? Using the chain rule and <span>$ξ = x - x^j$</span> we get</p><p class="math-container">\[\dfrac{∂}{∂ξ_i} \left( φ(\| ξ \|) \right)
 =
 φ\prime ( \| ξ \| ) \cdot
 \dfrac{∂}{∂ξ_i} ( \| ξ \| )
 =
 φ\prime ( \| ξ \| ) \cdot
-\dfrac{ξ_i}{\|ξ\|}.\]</p><p>The right term is always bounded, but not well defined for <span>$ξ = 0$</span> (see <sup class="footnote-reference"><a id="citeref-wild_diss" href="#footnote-wild_diss">[wild_diss]</a></sup> for details). <br/><strong>That is why we require <span>$φ&#39;(0) \stackrel{!}= 0$</span>.</strong> <br/>We have <span>$\dfrac{∂}{∂x_i} ξ(x) = x - x^j$</span> and thus</p><p class="math-container">\[∇r(x) = \sum_{i=1}^N \frac{w_i φ\prime( \| x - x^i \| )}{\| x - x^i \|} (x - x^i) + ∇p(x)\]</p><p>Hence, we need the derivatives of our <code>RadialFunctions</code>.</p><pre><code class="language-julia">df(φ :: Gaussian, ρ :: Real) = - 2 * φ.α * φ( ρ )
+\dfrac{ξ_i}{\|ξ\|}.\]</p><p>The right term is always bounded, but not well defined for <span>$ξ = 0$</span> (see <sup class="footnote-reference"><a id="citeref-wild_diss" href="#footnote-wild_diss">[wild_diss]</a></sup> for details). <br/><strong>That is why we require <span>$φ&#39;(0) \stackrel{!}= 0$</span>.</strong> <br/>We have <span>$\dfrac{∂}{∂x_i} ξ(x) = 1$</span> and thus</p><p class="math-container">\[∇r(x) = \sum_{i=1}^N \frac{w_i φ\prime( \| x - x^i \| )}{\| x - x^i \|} (x - x^i) + ∇p(x)\]</p><p>Hence, we need the derivatives of our <code>RadialFunctions</code>.</p><pre><code class="language-julia">df(φ :: Gaussian, ρ :: Real) = - 2 * φ.α * φ( ρ )
 df(φ :: Multiquadric, ρ :: Real ) = (-1)^(ceil(Int, φ.β)) * 2 * φ.α * φ.β * ρ * ( 1 + (φ.α * ρ)^2 )^(φ.β - 1)
 df(φ :: InverseMultiquadric, ρ :: Real ) = - 2 * φ.α^2 * φ.β * ρ * ( 1 + (φ.α * ρ)^2 )^(-φ.β - 1)
 df(φ :: Cubic, ρ :: Real ) = (-1)^(ceil(Int, φ.β/2)) * φ.β * ρ^(φ.β - 1)
-df(φ :: ThinPlateSpline, ρ :: Real ) = ρ == 0 ? 0 : (-1)^(φ.k+1) * ρ^(2*φ.k - 1) * ( 2 * φ.k * log(ρ) + 1)</code></pre><pre class="documenter-example-output">df (generic function with 5 methods)</pre><p>For the Hessian <span>$Hr \colon ℝ^n \to ℝ^{n\times n}$</span> we need the gradients of the component functions</p><p class="math-container">\[    ψ_j(ξ) = \frac{ φ&#39;( \left\| ξ \right\| )}{\|ξ\|} ξ_j\]</p><p>Suppose <span>$ξ ≠ 0$</span>. First, using the product rule, we have</p><p class="math-container">\[   \dfrac{∂}{∂ξ_i}
+df(φ :: ThinPlateSpline, ρ :: Real ) = ρ == 0 ? 0 : (-1)^(φ.k+1) * ρ^(2*φ.k - 1) * ( 2 * φ.k * log(ρ) + 1)</code></pre><pre class="documenter-example-output">df (generic function with 5 methods)</pre><p>We can then implement the formula from above. For a fixed center <span>$x^i$</span> let <span>$o$</span> be the distance vector <span>$x - x^i$</span> and let <span>$ρ$</span> be the norm <span>$ρ = \|o\| = \| x- x^i \|$</span>. Then, the gradient of a single kernel is:</p><pre><code class="language-julia">function grad( k :: ShiftedKernel, o :: AnyVec, ρ :: Real )
+    ρ == 0 ? zero(k.c) : (df( k.φ, ρ )/ρ) .* o
+end</code></pre><pre class="documenter-example-output">grad (generic function with 1 method)</pre><p>In terms of <code>x</code>:</p><pre><code class="language-julia">function grad( k :: ShiftedKernel, x :: NumberOrVector )
+    o = x .- k.c    # offset vector
+    ρ = norm2( o )  # distance
+    return grad( k, o, ρ )
+end</code></pre><pre class="documenter-example-output">grad (generic function with 2 methods)</pre><p>Hence the gradients of an RBFOutputSystem are easy:</p><pre><code class="language-julia">function grad( rbf :: RBFOutputSystem, x :: NumberOrVector, ℓ :: Int )
+    W = rbf.weights[:, ℓ]   # weights for output ℓ
+    return sum( W .* [ grad(k, x ) for k ∈ kernels ] )
+end</code></pre><pre class="documenter-example-output">grad (generic function with 3 methods)</pre><p>For the jacobian, we use <code>grad(k, o, ρ)</code> to save evaluations:</p><pre><code class="language-julia">function jac( rbf :: RBFOutputSystem{S}, x :: NumberOrVector ) where S
+
+    T = promote_type( eltype(x), eltype(rbf.weights) )
+    J = (S ? MMatrix{rbf.num_outputs, length(x)} : Matrix )( zeros(T, rbf.num_outputs, length(x) ) )
+
+    o = [ x .- k.c for k ∈ rbf.kernels ]    # all offset vectors
+    ρ = norm2.(o)       # all distances
+    for ℓ = 1 : rbf.num_outputs
+        W = rbf.weights[:,ℓ]
+        J[ℓ, :] = sum( W .* [ grad( i...) for i ∈ zip( rbf.kernels, o, ρ) ] )
+    end
+    return J
+end</code></pre><pre class="documenter-example-output">jac (generic function with 1 method)</pre><p>For the Hessian <span>$Hr \colon ℝ^n \to ℝ^{n\times n}$</span> we need the gradients of the component functions</p><p class="math-container">\[    ψ_j(ξ) = \frac{ φ&#39;( \left\| ξ \right\| )}{\|ξ\|} ξ_j\]</p><p>Suppose <span>$ξ ≠ 0$</span>. First, using the product rule, we have</p><p class="math-container">\[   \dfrac{∂}{∂ξ_i}
    \left(
    \frac{ φ&#39;( \left\| ξ \right\| )}{\|ξ\|} ξ_j
    \right) =
@@ -526,6 +566,6 @@ df(φ :: ThinPlateSpline, ρ :: Real ) = ρ == 0 ? 0 : (-1)^(φ.k+1) * ρ^(2*φ.
     \left( \frac{φ&#39;(\|ξ\|)}{\|ξ\|^3}
     -
     \frac{φ&#39;&#39;(\|ξ\|)}{\|ξ\|^2} \right) \cdot ξ
-    -\frac{φ&#39;(\|ξ\|)}{\|ξ\|} e^j,\]</p><p>where <span>$e^j ∈ ℝ^n$</span> is all zeros, except <span>$e^j_j = 1$</span>. For <span>$ξ = 0$</span> the first term vanishes due to L&#39;Hôpital&#39;s rule:</p><p class="math-container">\[∇ψ_j(0) = φ&#39;&#39;(0) e^j.\]</p><h3 id="Custom-Adjoints"><a class="docs-heading-anchor" href="#Custom-Adjoints">Custom Adjoints</a><a id="Custom-Adjoints-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-Adjoints" title="Permalink"></a></h3><p>For automatic differentiation we need custom adjoints for some <code>StaticArrays</code>:</p><pre><code class="language-julia">@adjoint (T::Type{&lt;:StaticArrays.SizedMatrix})(x::AbstractMatrix) = T(x), dv -&gt; (nothing, dv)
-@adjoint (T::Type{&lt;:StaticArrays.SVector})(x::AbstractVector) = T(x), dv -&gt; (nothing, dv)
-@adjoint (T::Type{&lt;:StaticArrays.SizedVector})(x::AbstractVector) = T(x), dv-&gt;(nothing, dv)</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-wild_diss"><a class="tag is-link" href="#citeref-wild_diss">wild_diss</a>“Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.</li><li class="footnote" id="footnote-wendland"><a class="tag is-link" href="#citeref-wendland">wendland</a>“Scattered Data Approximation”, Wendland</li></ul></section></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../README/">« Readme</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 7 May 2021 15:02">Friday 7 May 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    -\frac{φ&#39;(\|ξ\|)}{\|ξ\|} e^j,\]</p><p>where <span>$e^j ∈ ℝ^n$</span> is all zeros, except <span>$e^j_j = 1$</span>. For <span>$ξ = 0$</span> the first term vanishes due to L&#39;Hôpital&#39;s rule:</p><p class="math-container">\[∇ψ_j(0) = φ&#39;&#39;(0) e^j.\]</p><h3 id="Custom-Adjoints"><a class="docs-heading-anchor" href="#Custom-Adjoints">Custom Adjoints</a><a id="Custom-Adjoints-1"></a><a class="docs-heading-anchor-permalink" href="#Custom-Adjoints" title="Permalink"></a></h3><p>For automatic differentiation we need custom adjoints for some <code>StaticArrays</code>:</p><pre><code class="language-julia">#@adjoint (T::Type{&lt;:StaticArrays.SizedMatrix})(x::AbstractMatrix) = T(x), dv -&gt; (nothing, dv)
+#@adjoint (T::Type{&lt;:StaticArrays.SVector})(x::AbstractVector) = T(x), dv -&gt; (nothing, dv)
+#@adjoint (T::Type{&lt;:StaticArrays.SizedVector})(x::AbstractVector) = T(x), dv -&gt; (nothing, dv)</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-wild_diss"><a class="tag is-link" href="#citeref-wild_diss">wild_diss</a>“Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.</li><li class="footnote" id="footnote-wendland"><a class="tag is-link" href="#citeref-wendland">wendland</a>“Scattered Data Approximation”, Wendland</li></ul></section></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../README/">« Readme</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 10 May 2021 16:19">Monday 10 May 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

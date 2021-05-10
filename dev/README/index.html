@@ -6,7 +6,11 @@ Y = f.(X)</code></pre><pre class="documenter-example-output">5-element Vector{Fl
   4.0
   0.0
   4.0
- 16.0</pre><p>Initialize the <code>RadialFunction</code> to use for the RBF model:</p><pre><code class="language-julia">φ = Multiquadric()</code></pre><pre class="documenter-example-output">(::Multiquadric) (generic function with 2 methods)</pre><p>Construct an interpolating model with linear polynomial tail:</p><pre><code class="language-julia">rbf = RBFInterpolationModel( X, Y, φ, 1)</code></pre><pre class="documenter-example-output">RBFModel{true, true}(RBFModels.RBFOutputSystem{true}(RBFModels.ShiftedKernel[RBFModels.ShiftedKernel(Multiquadric(1, 1//2), [-4.0]), RBFModels.ShiftedKernel(Multiquadric(1, 1//2), [-2.0]), RBFModels.ShiftedKernel(Multiquadric(1, 1//2), [0.0]), RBFModels.ShiftedKernel(Multiquadric(1, 1//2), [2.0]), RBFModels.ShiftedKernel(Multiquadric(1, 1//2), [4.0])], [4.72960064394041; -4.0351920552760845; … ; -4.035192055276081; 4.729600643940407], 1, 5), RBFModels.PolySystem{true}(StaticPolynomials.Polynomial[19.566541390853736], 1), 1, 1, 5)</pre><p>We can evaluate <code>rbf</code> at the data points; By default, vectors are returned and for small dimensions <code>StaticArrays</code> are used. The results will be SVectors or SizedVectors</p><pre><code class="language-julia">Z = rbf.(X)
+ 16.0</pre><p>Initialize the <code>RadialFunction</code> to use for the RBF model:</p><pre><code class="language-julia">φ = Multiquadric()</code></pre><pre class="documenter-example-output">(::Multiquadric) (generic function with 2 methods)</pre><p>Construct an interpolating model with linear polynomial tail:</p><pre><code class="language-julia">rbf = RBFInterpolationModel( X, Y, φ, 1)</code></pre><pre class="documenter-example-output">RBFModel
+* using StaticArrays
+* with vector output
+* with 5 centers
+* mapping from ℝ^1 to ℝ^1.</pre><p>We can evaluate <code>rbf</code> at the data points; By default, vectors are returned and for small dimensions <code>StaticArrays</code> are used. The results will be SVectors or SizedVectors</p><pre><code class="language-julia">Z = rbf.(X)
 @test Z isa Vector{&lt;:RBFModels.StatVec}
 @test length(Z[1]) == 1</code></pre><pre class="documenter-example-output">Test Passed</pre><p>The results should be close to the data labels <code>Y</code>.</p><pre><code class="language-julia">@test all( isapprox(Z[i][1], Y[i]; atol = 1e-10) for i = 1 : length(Z) )</code></pre><pre class="documenter-example-output">Test Passed</pre><p><code>X</code> contains Floats, but we can pass them to <code>rbf</code>. Usually you have feature vectors and they are always supported:</p><pre><code class="language-julia">@test rbf( [ X[1], ] ) == Z[1]</code></pre><pre class="documenter-example-output">Test Passed</pre><p>For 1 dimensional labels we can actually disable the vector output:</p><pre><code class="language-julia">rbf_scalar = RBFInterpolationModel( X, Y, φ, 1; vector_output = false)
 Z_scalar = rbf_scalar.( X )
@@ -24,16 +28,16 @@ rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 1; static_arrays = false )
     median(@benchmark( RBFInterpolationModel( X, Y, φ, 1; static_arrays = false))),
     median(@benchmark( RBFInterpolationModel( X_f0, Y_f0, φ, 1)))
 ]</code></pre><pre class="documenter-example-output">4-element Vector{BenchmarkTools.TrialEstimate}:
- 101.803 μs
- 101.903 μs
- 93.301 μs
- 96.402 μs</pre><p>Evaluation:</p><pre><code class="language-julia">eval_times = [
+ 86.301 μs
+ 86.901 μs
+ 77.501 μs
+ 83.101 μs</pre><p>Evaluation:</p><pre><code class="language-julia">eval_times = [
     median( @benchmark( rbf.(X) ) ),
     median( @benchmark( rbf_scalar.(X) ) ),
     median( @benchmark( rbf_vec.(X) ) ),
     median( @benchmark( rbf_f0.(X_f0) ) )
 ]</code></pre><pre class="documenter-example-output">4-element Vector{BenchmarkTools.TrialEstimate}:
- 69.101 μs
- 70.601 μs
- 69.801 μs
- 73.101 μs</pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../RBFModels/">Module Description »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 7 May 2021 15:02">Friday 7 May 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ 58.700 μs
+ 60.199 μs
+ 59.600 μs
+ 61.100 μs</pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../RBFModels/">Module Description »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 10 May 2021 16:19">Monday 10 May 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
