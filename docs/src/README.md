@@ -61,11 +61,11 @@ rbf = RBFInterpolationModel( X, Y, φ, 1)
 
 We can evaluate `rbf` at the data points;
 By default, vectors are returned and for small dimensions
-`StaticArrays` are used.
+`StaticArrays` are used. The results will be SVectors or SizedVectors
 
 ````@example README
 Z = rbf.(X)
-@test Z isa Vector{RBFModels.SVector{1,Float64}}
+@test Z isa Vector{<:RBFModels.StatVec}
 @test length(Z[1]) == 1
 ````
 

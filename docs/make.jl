@@ -3,7 +3,7 @@ using Documenter
 
 include("make_literate.jl")
 
-project_path =joinpath(@__DIR__, "..", "Project.toml")
+project_path = joinpath(@__DIR__, "..", "Project.toml")
 
 if ! (project_path ∈ Base.load_path())
     push!(LOAD_PATH, project_path)
