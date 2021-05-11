@@ -10,4 +10,20 @@ Y = f.(X)
 φ = Multiquadric()
 
 # Construct an interpolating model with linear polynomial tail:
-rbf = RBFInterpolationModel( X, Y, φ, 1, static_arrays = false)
+rbf = RBFInterpolationModel( X, Y, φ, 1)
+
+#%%
+using StaticArrays
+ξ = @SVector(rand(2))
+jac( rbf.rbf_sys, ξ )
+
+#%%
+import Flux.Zygote as Zyg
+
+l = function( x )
+    rbf_m = RBFInterpolationModel( X, Y, φ, 1; static_arrays = false )
+    return rbf_m(x)
+end
+
+gradient( l, rand(2))
+    

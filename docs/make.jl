@@ -26,7 +26,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Readme" => "README.md",
-        "Module Description" => "RBFModels.md"
+        "Main Module" => "RBFModels.md"
     ],
 )
 
