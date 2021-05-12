@@ -15,7 +15,7 @@ function replace_includes(str)
     path = joinpath( @__DIR__, "..", "src" )
 
     for ex in included
-        content = read(path*ex, String)
+        content = read(joinpath(path,ex), String)
         str = replace(str, "include(\"$(ex)\")" => content)
     end
     return str

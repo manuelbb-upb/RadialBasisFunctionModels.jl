@@ -12,9 +12,10 @@ using ThreadSafeDicts
 using Memoize: @memoize
 using StaticArrays
 using LinearAlgebra: norm
+using Lazy: @forward
 
 import Flux.Zygote as Zyg
-using Flux.Zygote: Buffer, @adjoint
+#using Flux.Zygote: Buffer, @adjoint
 
 # TODO also set Flux.trainable to make inner parameters trainable #src
 
@@ -110,12 +111,12 @@ norm2( vec ) = norm(vec, 2)
 
 "Evaluate kernel `k` at `x - k.c`."
 function (k::ShiftedKernel)( x :: AnyVec{<:Real} )
-    return k.φ( norm2( x .- k.c ) )
+    return k.φ( norm2( x - k.c ) )
 end
 
 # A vector of ``N`` kernels is a mapping ``ℝ^n → ℝ^N, \ x ↦ [ k₁(x), …, k_N(x)] ``.
 "Evaluate ``x ↦ [ k₁(x), …, k_{N_c}(x)]`` at `x`."
-function ( K::AnyVec{ShiftedKernel}, x :: AnyVec{<:Real} )
+function ( K::AnyVec{ShiftedKernel})( x :: AnyVec{<:Real} )
     [ k(x) for k ∈ K ]
 end
 
@@ -133,30 +134,36 @@ end
 # Provided we have solved the interpolation system, the weights for the radial basis function 
 # part of ``r`` are ``w``, where ``w`` is a vector of length ``N_c`` or a matrix in ``ℝ^{N_c \times k}``
 # where k is the number of outputs.
-# We treat the general case ``k\ge 1`` and always assume ``w`` to be a matrix:
+# We treat the general case ``k\ge 1`` and always assume ``w`` to be a matrix.
 
 struct RBFSum
     kernels :: AnyVec{ShiftedKernel}
-    weights :: AnyMat 
+    weights :: AnyMat # weigth vectors, one for each output
+
+    ## information fields 
+    num_vars :: Int
+    num_centers :: Int
+    num_outputs :: Int
+
 end
 
 # We can easily evaluate the `ℓ`-th output of the `RBFPart`.
 "Evaluate output `ℓ` of RBF sum `rbf::RBFSum`"
 function (rbf :: RBFSum)(x :: AnyVec{<:Real}, ℓ :: Int)
-    sum( rbf.weights[:, ℓ] .* rbf.kernels(x) )
+    (rbf.kernels(x)'rbf.weights[:,ℓ])[1]
 end
 
 # Use the above method for vector-valued evaluation of the whole sum:
 "Evaluate `rbf::RBFSum` at `x`."
-(rbf::RBFSum)( x :: AnyVec{<:Real} ) = [ rbf(x, ℓ) for ℓ = 1 : size(rbf.weights,2) ]
+(rbf::RBFSum)( x :: AnyVec{<:Real} ) = vec(rbf.kernels(x)'rbf.weights)
 
 # As before, we allow to pass precalculated distance vectors:
 function eval_at_dist( rbf::RBFSum, dists :: AnyVec{<:Real}, ℓ :: Int ) 
-    sum( rbf.weights[:, ℓ] .* eval_at_dist( rbf.kernels, dists ) )
+   eval_at_dist( rbf.kernels, dists )'rbf.weights
 end
 
-function eval_at_dist( rbf :: RBFSum, dists :: AnyVec{<:Real}) 
-    [ eval_at_dist(rbf, dists, ℓ) for ℓ = 1 : size( rbf.weights, 2) ]
+function eval_at_dist( rbf :: RBFSum, dists :: AnyVec{<:Real})
+   vec(eval_at_dist(rbf.kernels, dists )'rbf.weights)
 end
 
 # For the PolynomialTail we use a `StaticPolynomials.PolynomialSystem`. \
@@ -168,11 +175,6 @@ end
 * `V` is `true` by default. It can be set to `false` only if the number 
   of outputs is 1. Then scalars are returned.
 
-Initialize via one of the constructors, e.g.,
-    `RBFInterpolationModel( sites, values, φ, poly_deg )`
-to obain an interpolating RBF model.
-
-See also [`RBFInterpolationModel`](@ref)
 """
 struct RBFModel{V}
     rbf :: RBFSum
@@ -182,11 +184,11 @@ struct RBFModel{V}
     num_vars :: Int
     num_outputs :: Int
     num_centers :: Int
-
-    function RBFModel{V}( rbf :: RBFSum, polys :: PolynomialSystem ) where V
-        num_centers = length( rbf.kernels )
+    #=
+    function RBFModel( rbf :: RBFSum, polys :: PolynomialSystem, V :: Bool )
+        num_centers = rbf.num_centers
         num_vars = num_centers > 0 ? length(rbf.kernels[1].c) : nvariables(polys)
-        num_outputs = num_centers > 0 ? size(rbf.kernels.weights, 2) : npolynomials(polys)
+        num_outputs = rbf.num_outputs > 0 ? rbf.num_outputs : npolynomials(polys)
 
         vec_out = num_outputs == 1 ? V : true
         return new{vec_out}(
@@ -195,13 +197,14 @@ struct RBFModel{V}
             num_centers
         )
     end
+    =#
 end
 
 # We want a model to be displayed in a sensible way:
-function Base.show( io :: IO, mod :: RBFModel{S} ) where S
+function Base.show( io :: IO, mod :: RBFModel{V} ) where V
     compact = get(io, :compact, false)
     if compact 
-        print(io, "$(mod.num_vars)D$(mod.num_outputs)D-RBFModel{$(S)}")
+        print(io, "$(mod.num_vars)D$(mod.num_outputs)D-RBFModel{$(V)}")
     else
         print(io, "RBFModel\n")
         if !V print(io, "* with scalar output\n") end 
@@ -225,7 +228,7 @@ end
 ( mod :: RBFModel{false} )(x :: AnyVec{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
 
 "Evaluate scalar output `ℓ` of model `mod` at vector `x`."
-function (mod :: RBFModel, x :: AnyVec{<:Real}, ℓ :: Int)
+function (mod :: RBFModel)( x :: AnyVec{<:Real}, ℓ :: Int)
     return mod.rbf(x, ℓ) .+ mod.polys.polys[ℓ]( x )
 end
 
@@ -241,6 +244,10 @@ end
 
 # The easiest way to provide derivatives is via Automatic Differentiation.
 # We have imported `Flux.Zygote` as `Zyg`. 
+# For automatic differentiation we need custom adjoints for some `StaticArrays`:
+Zyg.@adjoint (T::Type{<:SizedMatrix})(x::AbstractMatrix) = T(x), dv -> (nothing, dv)
+Zyg.@adjoint (T::Type{<:SizedVector})(x::AbstractVector) = T(x), dv -> (nothing, dv)
+Zyg.@adjoint (T::Type{<:SArray})(x::AbstractArray) = T(x), dv -> (nothing, dv)
 # This allows us to define the following methods:
 
 "Return the jacobian of `rbf` at `x` (using Zygote)."
@@ -279,6 +286,10 @@ end
 # !!! note
 #     We need at least `ChainRules@v.0.7.64` to have `auto_grad` etc. work for StaticArrays,
 #     see [this issue](https://github.com/FluxML/Zygote.jl/issues/860).
+
+# !!! note 
+#     The above methods do not work if x is a StaticArray due to StaticPolynomials not knowing the 
+#     custom adjoints. Maybe extendings `ChainRulesCore` helps?
 # 
 
 # But we don't need `Zygote`, because we can derive the gradients ourselves.
@@ -312,7 +323,7 @@ end
 
 # In terms of `x`:
 function grad( k :: ShiftedKernel, x :: AnyVec{<:Real} ) 
-    o = x .- k.c    # offset vector 
+    o = x - k.c     # offset vector 
     ρ = norm2( o )  # distance 
     return grad( k, o, ρ )
 end 
@@ -327,14 +338,17 @@ function jacT( K :: AnyVec{ShiftedKernel}, offsets :: AnyVec{<:AnyVec}, dists ::
 end
 jac( K :: AnyVec{ShiftedKernel}, args... ) = transpose( jacT(K, args...) )
 
-
 # Hence, the gradients of an RBFSum are easy:
 function grad( rbf :: RBFSum, x :: AnyVec{<:Real}, ℓ :: Int = 1 )
-    vec( jacT( rbf.kernels, x) * rbf.weights[:, ℓ] )    
+    vec( jacT( rbf.kernels, x) * rbf.weights[:,ℓ] )    
 end
 
 function grad( rbf :: RBFSum, offsets :: AnyVec{<:AnyVec}, dists :: AnyVec{<:Real}, ℓ :: Int)
     return vec( jacT( rbf.kernels, offsets, dists ) * rbf.weights[:,ℓ] )
+end
+
+function grad( mod :: RBFModel, x :: AnyVec{<:Real}, ℓ :: Int = 1 )
+    grad(mod.rbf, x, ℓ) + gradient( mod.polys.polys[ℓ], x )
 end
 
 # We can exploit our custom evaluation methods for "distances": 
@@ -343,19 +357,25 @@ function eval_and_grad( rbf :: RBFSum, offsets :: AnyVec{<:AnyVec}, dists :: Any
 end
 
 function eval_and_grad( rbf :: RBFSum, x :: AnyVec{<:Real}, ℓ :: Int = 1)
-    offsets = [ k.c .- x for k ∈ rbf.kernels ]
+    offsets = [ x - k.c for k ∈ rbf.kernels ]
     dists = norm2.(offsets)
     return eval_and_grad( rbf, offsets, dists, ℓ)
 end
 
 # For the jacobian, we use this trick to save evaluations, too.
 function jacT( rbf :: RBFSum, x :: AnyVec{<:Real} )
-    offsets = [ k.c .- x for k ∈ rbf.kernels ]
+    offsets = [ x - k.c for k ∈ rbf.kernels ]
     dists = norm2.(offsets)
-    
-    hcat( [ grad( rbf, offsets, dists, ℓ) for ℓ = 1 : size( rbf.weights, 2 ) ]... )
+    jacT( rbf.kernels, offsets, dists )*rbf.weights
 end
 jac(rbf :: RBFSum, args... ) = transpose( jacT(rbf, args...) )
+
+function jac( mod :: RBFModel, x :: AnyVec{<:Real} )
+    jac( mod.rbf, x) + jacobian( mod.polys, x )
+end
+
+# !!! note
+#     Hessians are not yet implemented.
 
 # For the Hessian ``Hr \colon ℝ^n \to ℝ^{n\times n}`` we need the gradients of the 
 # component functions 
@@ -423,12 +443,6 @@ jac(rbf :: RBFSum, args... ) = transpose( jacT(rbf, args...) )
 # ```
 
 include("constructors.jl")
-
-# ### Custom Adjoints
-# For automatic differentiation we need custom adjoints for some `StaticArrays`:
-#@adjoint (T::Type{<:StaticArrays.SizedMatrix})(x::AbstractMatrix) = T(x), dv -> (nothing, dv)
-#@adjoint (T::Type{<:StaticArrays.SVector})(x::AbstractVector) = T(x), dv -> (nothing, dv)
-#@adjoint (T::Type{<:StaticArrays.SizedVector})(x::AbstractVector) = T(x), dv -> (nothing, dv)
 
 # [^wild_diss]: “Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.
 # [^wendland]: “Scattered Data Approximation”, Wendland

@@ -79,7 +79,7 @@ function coefficients(
         sites :: VecOfVecs, 
         values :: VecOfVecs, 
         kernels :: AnyVec{ShiftedKernel},
-        polys :: Vector{<:DynamicPolynomials.Polynomial} 
+        polys :: Vector{<:DP.Polynomial};
     )
 
     n_out = length(values[1])
@@ -100,20 +100,14 @@ function coefficients(
     ## build rhs
     RHS = [
         transpose( hcat( values... ) );
-        zeros( eltype(eltype(values)), Q, size(F,2) )
+        zeros( eltype(eltype(values)), Q, n_out )
     ];
 
     ## solve system
     coeff = A \ RHS 
 
-    @show typeof(coeff)
-
     ## return w and λ
-    if isa( sites[1], StaticArray )
-        return SMatrix{N,n_out}(coeff[1 : N, :]), SMatrix{Q, n_out}(coeff[N+1 : end, :])
-    else
-        return coeff[1 : N, :], coeff[N+1 : end, :]
-    end
+    return coeff[1 : N, :], coeff[N+1 : end, :]
 end
 
 # ### The Actual, Usable Constructor 
@@ -121,56 +115,74 @@ end
 # We want the user to be able to pass 1D data as scalars and use the following helpers:
 const NumberOrVector = Union{<:Real, AnyVec{<:Real}}
 
-function ensure_vec_of_vecs( before :: AnyVec{ <:Real }, :: Val{false} )
-    [ [vec,] for vec ∈ before ]
-end
-function ensure_vec_of_vecs( before :: AnyVec{ <:Real }, :: Val{true} )
+function ensure_vec_of_vecs( before :: AnyVec{ <:Real } )
     [ SVector{1}([vec,]) for vec ∈ before ]
 end
-ensure_vec_of_vecs( before :: AnyVec{ <:AnyVec }, args...) = before
-
+ensure_vec_of_vecs( before :: AnyVec{ <:AnyVec } ) = before
 
 # Helpers to create kernel functions. Should return `SVector` when appropriate. 
-"Return a list of `ShiftedKernel`s."
-function _make_kernels( φ_arr :: Union{RadialFunction, AnyVec{RadialFunction}}, sites :: AnyVec )
-    if φ_arr isa RadialFunction
-        φ_arr = [φ_arr for i = 1:length(sites)]
-    end
-    return [ ShiftedKernel(φ_arr[i], sites[i]) for i = eachindex( φ_arr ) ]
+    
+"Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `centers`."
+function make_kernels( φ_arr :: AnyVec{<:RadialFunction}, centers :: VecOfVecs )
+    @assert length(φ_arr) == length(centers)
+    [ ShiftedKernel(φ_arr[i], centers[i]) for i = eachindex( centers ) ]
+end
+"Return array of `ShiftedKernel`s based function `φ` with centers from `centers`."
+function make_kernels( φ :: RadialFunction, centers :: VecOfVecs )
+    [ ShiftedKernel(φ, centers[i]) for i = eachindex( centers ) ]
 end
 
-"Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `sites`."
-make_kernels( φ_arr, centers :: AnyVec{<:Vector} ) = _make_kernels( φ_arr, centers )
-make_kernels( φ_arr, centers :: AnyVec{<:StatVec} ) = SVector{length(sites)}(_make_kernels(φ_arr,centers))
+# We use these methods to construct the RBFSum of a model  
+function RBFSum( kernels :: AnyVec{<:ShiftedKernel}, weights :: AnyMat,
+        num_vars :: Int = -1, num_centers ::Int = -1, num_outputs :: Int = -1;
+        static_arrays :: Bool = true
+    ) 
+    if num_vars < 0 num_vars = length(kernels[1].c) end
+    if num_centers < 0 num_centers = length(kernels) end
+    if num_outputs < 0 num_outputs = length(weights) end
+
+    ## Sized Matrix?
+    @assert size(weights) == (num_centers, num_outputs) "Weights must have dimensions $((num_centers, num_outputs)) instead of $(size(weights))."
+    if num_centers * num_outputs < 100 && static_arrays
+        if !( weights isa StaticArray)
+            weights = SMatrix{num_centers, num_outputs}(weights)
+        end
+    end
+    
+    #w_vecs = copy.(eachcol(weights))
+
+    RBFSum( kernels, weights, num_vars, num_centers, num_outputs)
+end
 
 # We now have all ingredients for the basic outer constructor:
 
-"""
+@doc """
     RBFModel( features, labels, φ = Multiquadric(), poly_deg = 1; kwargs ... )
 
 Construct a `RBFModel` from the feature vectors in `features` and 
 the corresponding labels in `lables`, where `φ` is a `RadialFunction` or a vector of 
-`RadialFunction`s.\
-Scalar data can be used, it is transformed internally. \
+`RadialFunction`s.\n
+Scalar data can be used, it is transformed internally. \n
 StaticArrays can be used, e.g., `features :: Vector{<:SVector}`. 
-Do so for all data to benefit from possible speed-ups.\
+Providing `SVector`s only might speed up the construction.\n
 If the degree of the polynomial tail, `poly_deg`, is too small it will be set to `cpd_order(φ)-1`.
 
 If the RBF centers do not equal the the `features`, you can use the keyword argument `centers` to
 pass a list of centers. If `φ` is a vector, then the length of `centers` and `φ` must be equal and 
-`centers[i]` will be used in conjunction with `φ[i]` to build a `ShiftedKernel`. \
+`centers[i]` will be used in conjunction with `φ[i]` to build a `ShiftedKernel`. \n
 If `features` has 1D data, the output of the model will be a 1D-vector.
 If it should be a scalar instead, set the keyword argument `vector_output` to `false`.
 """
-function RBFModel(  
-        features :: AnyVec{ FType },
-        labels :: AnyVec{ LType },
-        φ :: Union{RadialFunction,AnyVec{<:RadialFunction}},
+function RBFModel( 
+        features :: AnyVec{ <:NumberOrVector },
+        labels :: AnyVec{ <:NumberOrVector },
+        φ :: Union{RadialFunction,AnyVec{<:RadialFunction}} = Multiquadric(),
         poly_deg :: Int = 1;
-        centers :: AnyVec{ CType } = [],
+        centers :: AnyVec{ <:NumberOrVector } = Vector{Float16}[],
+        interpolation_indices :: AnyVec{ <: Int } = Int[],
         vector_output :: Bool = true,
-        use_static_arrays :: Bool = true
-    ) where {FType, LType, CType}
+        static_arrays :: Bool = true
+    )
 
     ## Basic Data integrity checks
     @assert !isempty(features) "Provide at least 1 feature vector."
@@ -186,20 +198,19 @@ function RBFModel(
         centers = features
     end
 
-    ## prepare provided training data
-    ## are we using static arrays?
-    static = ( 
-        ( FType <: Number || FType <: StaticArray ) && 
-        ( LType <: Number || LType <: StaticArray ) && 
-        ( CType <: Number || CType <: StaticArray )
-    )
+    sites = ensure_vec_of_vecs(features)
+    values = ensure_vec_of_vecs(labels)
+    centers = ensure_vec_of_vecs(centers)
 
-    sites = ensure_vec_of_vecs(features, Val(static))
-    values = ensure_vec_of_vecs(labels, Val(static))
-    centers = ensure_vec_of_vecs(centers, Val(static))
+    ## Use static arrays if there are not too many variables
+    if num_vars < 100 && static_arrays
+        if !(centers[1] isa StaticArray)
+            centers = [ SVector{num_vars}(c) for c ∈ centers ] 
+        end
+    end
     
     kernels = make_kernels( φ, centers )
-    poly_deg = min( poly_deg, cpd_order(φ) - 1 )
+    poly_deg = max( poly_deg, cpd_order(φ) - 1 , -1 )
     poly_basis = canonical_basis( num_vars, poly_deg )
 
     w, λ = coefficients( sites, values, kernels, poly_basis )
@@ -209,99 +220,49 @@ function RBFModel(
     for coeff_ℓ ∈ eachcol( λ )
         push!( poly_vec, StaticPolynomials.Polynomial( poly_basis'coeff_ℓ ) )
     end 
-    poly_sys = PolynomialSystem( poly_vec )
+    poly_sys = PolynomialSystem( poly_vec... )
 
     ## build RBF system 
-    num_centers = length(sites)
-    rbf_sys = RBFSum(kernels, w)
+    num_centers = length(centers)
+    rbf_sys = RBFSum(kernels, w, num_vars, num_centers, num_outputs; static_arrays)
   
     ## vector output? (dismiss user choice if labels are vectors)
     vec_output = num_outputs == 1 ? vector_output : true
      
-    return RBFModel{vec_output}( kernels, polys )
+    return RBFModel{vec_output}( rbf_sys, poly_sys, num_vars, num_centers, num_outputs )
 end
 
+### Special Constructors
 
+# We offer some specialized models (that simply wrap the main type).
+struct RBFInterpolationModel
+    model :: RBFModel 
+end
+(mod :: RBFInterpolationModel)(args...) = mod.model(args...)
+@forward RBFInterpolationModel.model grad, jac, jacT, auto_grad, auto_jac
 
-
-# The `RBFInterpolationModel` constructor takes data sites and values and return an `RBFModel` that 
-# interpolates these points.
-# We allow for passing scalar data and transform it internally.
-
-
+# The constructor is a tiny bit simpler and additional checks take place:
 """
-    RBFInterpolationModel( sites :: Vector{VS}, values :: Vector{VT}, φ, poly_deg = 1; 
-        static_arrays = nothing, vector_output = true ) where {VS<:NumberOrVector, VT<:NumberOrVector}
+    RBFInterpolationModel(features, labels, φ, poly_deg; kwargs… )
 
-Return an RBFModel `m` that is interpolating, i.e., `m(sites[i]) == values[i]` for all 
-`i = eachindex(sites)`.
-`φ` should be a `RadialFunction` or a vector of `RadialFunction`s that has the same length 
-as `sites` and `values`.
-`poly_deg` specifies the degree of the multivariate polynomial added to the RBF model.
-It will be reset if needed.
-`static_arrays` is automatically set to `true` if unspecified and the data dimensions are small.
-`vector_output` is ignored if the `values` have length > 1. Elsewise it specifies whether to return 
-vectors or scalars when evaluating.
+Build a model interpolating the feature-label pairs.
+Does not accept `center` keyword argument.
 """
-function RBFInterpolationModel(  
-    s̃ides :: Vector{ VecTypeS },
-    ṽalues :: Vector{ VecTypeV },
-    φ :: Union{RadialFunction,Vector{<:RadialFunction}},
-    poly_deg :: Int = 1;
-    static_arrays :: Union{Bool, Nothing} = nothing,
-    vector_output :: Bool = true,
-    ) where { VecTypeS<:NumberOrVector, VecTypeV<:NumberOrVector }
-
-    ## data integrity checks
-    @assert length(s̃ides) == length(ṽalues) "Provide as many data sites as data labels."
-    @assert !isempty(s̃ides) "Provide at least 1 data site."
-    num_vars = length(s̃ides[1])
-    num_outputs = length(ṽalues[1])
-    @assert all( length(s) == num_vars for s ∈ s̃ides ) "All sites must have same dimension."
-    @assert all( length(v) == num_outputs for v ∈ ṽalues ) "All values must have same dimension."
-    
-    ## use static arrays? if no user preference is set …
-    if isnothing(static_arrays)
-        ## … use only if matrices are small
-        static_arrays = (num_vars <= 10 && num_outputs <= 10)
-    end
-
-    ## prepare provided training data
-    ## use same precision everywhere ( at least half-precision )
-    TypeS = eltype( VecTypeS )
-    TypeV = eltype( VecTypeV )
-    dtype = promote_type( TypeS, TypeV, Float16 )
-    NewVecTypeS = static_arrays ? SVector{ num_vars, dtype } : Vector{dtype}
-    NewVecTypeV = static_arrays ? SVector{ num_outputs, dtype } : Vector{dtype}
-    sites = convert_list_of_vecs( NewVecTypeS, s̃ides )
-    values = convert_list_of_vecs( NewVecTypeV, ṽalues )
-    
-    kernels = make_kernels( φ, sites )
-    poly_deg = min( poly_deg, cpd_order(φ) - 1 )
-    poly_basis = canonical_basis( num_vars, poly_deg )
-
-    w, λ = coefficients( sites, values, kernels, poly_basis )
-
-    ## build output polynomials
-    poly_vec = StaticPolynomials.Polynomial[] 
-    for coeff_ℓ ∈ eachcol( λ )
-        push!( poly_vec, StaticPolynomials.Polynomial( poly_basis'coeff_ℓ ) )
-    end 
-    poly_sys = PolySystem{static_arrays}( poly_vec, num_outputs )
-
-    ## vector output? (dismiss user choice if labels are vectors)
-    vec_output = num_outputs == 1 ? vector_output : true
-    
-    ## build RBF system 
-    num_centers = length(sites)
-    rbf_sys = RBFOutputSystem{static_arrays}(kernels, w, num_outputs, num_centers)
-   
-    return RBFModel{static_arrays, vec_output}( 
-        rbf_sys, poly_sys, num_vars, num_outputs, num_centers
+function RBFInterpolationModel( 
+        features :: AnyVec{ <:NumberOrVector },
+        labels :: AnyVec{ <:NumberOrVector },
+        φ :: Union{RadialFunction,AnyVec{<:RadialFunction}} = Multiquadric(),
+        poly_deg :: Int = 1;
+        vector_output :: Bool = true,
+        static_arrays :: Bool = true
     )
+    @assert length(features) == length(labels) "Provide as many features as labels!"
+    mod = RBFModel(features, labels, φ, poly_deg; vector_output, static_arrays)
+    return RBFInterpolationModel( mod )
 end
 
-# We want to provide an alternative constructor for interpolation models 
+
+# We want to provide a convenient alternative constructor for interpolation models 
 # so that the radial function can be defined by passing a `Symbol` or `String`.
 
 const SymbolToRadialConstructor = NamedTuple((
@@ -313,30 +274,25 @@ const SymbolToRadialConstructor = NamedTuple((
 ))
 
 function RBFInterpolationModel(
-        s̃ides :: Vector{ <: NumberOrVector }, 
-        ṽalues :: Vector{ <:NumberOrVector },
-        radial_func :: Union{Symbol, String}, 
-        constructor_args :: Union{Nothing, Vector{<:Tuple}, Tuple} = nothing, 
-        poly_deg :: Int = 1; kwargs ...
+        features :: AnyVec{ <:NumberOrVector },
+        labels :: AnyVec{ <:NumberOrVector },
+        φ_symb :: Union{Symbol, String},
+        φ_args :: Union{Nothing, Tuple} = nothing,
+        poly_deg :: Int = 1; kwargs...
     )
-
     ## which radial function to use?
-    radial_symb = Symbol( lowercase( string( radial_func ) ) )
+    radial_symb = Symbol( lowercase( string( φ_symb ) ) )
     if !(radial_symb ∈ keys(SymbolToRadialConstructor))
         @warn "Radial Funtion $(radial_symb) not known, using Gaussian."
         radial_symb = :gaussian
     end
-    constructor = SymbolToRadialConstructor[radial_symb]
-
-    if isnothing(constructor_args)
-        φ = constructor()
-    elseif constructor_args isa Tuple 
-        φ = constructor( constructor_args... )
-    elseif constructor_args isa Vector 
-        @assert length(constructor_args) == length(s̃ides)
-        φ = [ constructor( arg_tuple... ) for arg_tuple ∈ constructor_args ]
-    end
     
-    return RBFInterpolationModel( s̃ides, ṽalues, φ, poly_deg; kwargs... )
+    constructor = SymbolToRadialConstructor[radial_symb]
+    if φ_args isa Tuple 
+        φ = constructor( φ_args... )
+    else
+        φ = constructor()
+    end
 
+    RBFInterpolationModel( features, labels, φ, poly_deg; kwargs... )
 end
