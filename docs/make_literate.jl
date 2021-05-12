@@ -4,12 +4,31 @@ current_env = Base.load_path()[1]
 Pkg.activate(joinpath(@__DIR__))
 using Literate 
 
+#%% Replace include calls 
+# Taken from Liteare.jl docs 
+function replace_includes(str)
+
+    included = ["radial_funcs.jl", "constructors.jl"]
+
+    # Here the path loads the files from their proper directory,
+    # which may not be the directory of the `examples.jl` file!
+    path = joinpath( @__DIR__, "..", "src" )
+
+    for ex in included
+        content = read(joinpath(path,ex), String)
+        str = replace(str, "include(\"$(ex)\")" => content)
+    end
+    return str
+end
+
 #%%
+
 Literate.markdown(
     joinpath( @__DIR__, "..", "src", "RBFModels.jl"), 
     joinpath( @__DIR__, "src" );    
     documenter = true,
-    codefence = "````@example RBFModels" => "````"
+    codefence = "````@example RBFModels" => "````",
+    preprocess = replace_includes
     )
 
 #%% make readme

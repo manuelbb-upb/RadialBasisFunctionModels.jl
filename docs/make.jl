@@ -5,10 +5,14 @@ include("make_literate.jl")
 
 project_path = joinpath(@__DIR__, "..", "Project.toml")
 
-if ! (project_path ∈ Base.load_path())
+test_path = joinpath(@__DIR__, "..", "test", "Project.toml")
+
+if !(project_path ∈ Base.load_path())
     push!(LOAD_PATH, project_path)
 end
-
+if !(test_path ∈ Base.load_path())
+    push!(LOAD_PATH, test_path)
+end
 #%%
 
 DocMeta.setdocmeta!(RBFModels, :DocTestSetup, :(using RBFModels); recursive=true)
@@ -26,7 +30,7 @@ makedocs(;
     pages=[
         "Home" => "index.md",
         "Readme" => "README.md",
-        "Module Description" => "RBFModels.md"
+        "Main Module" => "RBFModels.md"
     ],
 )
 

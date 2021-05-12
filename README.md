@@ -52,7 +52,7 @@ Initialize the `RadialFunction` to use for the RBF model:
 Construct an interpolating model with linear polynomial tail:
 
 ````julia
-rbf = RBFInterpolationModel( X, Y, φ, 1)
+rbf = RBFModel( X, Y, φ, 1)
 ````
 
 We can evaluate `rbf` at the data points;
