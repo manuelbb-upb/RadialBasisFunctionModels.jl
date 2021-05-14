@@ -16,6 +16,7 @@ StaticPolynomials = "62e018b1-6e46-5407-a5a7-97d4fbcae734"
 ThreadSafeDicts = "4239201d-c60e-5e0a-9702-85d713665ba7"
 
 [compat]
+StaticArrays = "1.2"
 julia = "1.6"
 
 [extras]
