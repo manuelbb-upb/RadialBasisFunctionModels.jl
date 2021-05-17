@@ -98,9 +98,10 @@ include("radial_funcs.jl")
 
 # From an `RadialFunction` and a vector we can define a shifted kernel function.
 # We allow evaluation for statically sized vectors, too:
-const StatVec{T} = Union{SVector{I,T}, SizedVector{I,T,V}} where {I,V}
+const StatVec{T} = Union{SVector{I,T}, SizedVector{I,T,V}, MVector{I,T}} where {I,V}
 const AnyVec{T} = Union{Vector{T}, StatVec{T}}
 const AnyMat = Union{Matrix, SMatrix, SizedMatrix}
+const NumberOrVector = Union{<:Real, AnyVec{<:Real}}
 
 struct ShiftedKernel <: Function
     φ :: RadialFunction
@@ -136,15 +137,12 @@ end
 # where k is the number of outputs.
 # We treat the general case ``k\ge 1`` and always assume ``w`` to be a matrix.
 
-struct RBFSum
-    kernels :: AnyVec{ShiftedKernel}
-    weights :: AnyMat # weigth vectors, one for each output
-
-    ## information fields 
-    num_vars :: Int
-    num_centers :: Int
-    num_outputs :: Int
-
+struct RBFSum{
+    KT <: AbstractVector{ShiftedKernel},
+    WT <: AbstractMatrix{<:Real}
+}
+    kernels :: KT
+    weights :: WT # can be a normal matrix or a SMatrix
 end
 
 # We can easily evaluate the `ℓ`-th output of the `RBFPart`.
@@ -168,6 +166,7 @@ end
 
 # For the PolynomialTail we use a `StaticPolynomials.PolynomialSystem`. \
 # We now have all ingredients to define the model type.
+include("empty_poly_sys.jl")
 
 """
     RBFModel{V}
@@ -176,28 +175,14 @@ end
   of outputs is 1. Then scalars are returned.
 
 """
-struct RBFModel{V}
-    rbf :: RBFSum
-    polys :: PolynomialSystem
+struct RBFModel{V, KT, WT, PT <: Union{PolynomialSystem, ZeroPolySystem} }
+    rbf :: RBFSum{KT, WT}
+    polys :: PT
 
     ## Information fields
     num_vars :: Int
     num_outputs :: Int
     num_centers :: Int
-    #=
-    function RBFModel( rbf :: RBFSum, polys :: PolynomialSystem, V :: Bool )
-        num_centers = rbf.num_centers
-        num_vars = num_centers > 0 ? length(rbf.kernels[1].c) : nvariables(polys)
-        num_outputs = rbf.num_outputs > 0 ? rbf.num_outputs : npolynomials(polys)
-
-        vec_out = num_outputs == 1 ? V : true
-        return new{vec_out}(
-            num_vars,
-            num_outputs,
-            num_centers
-        )
-    end
-    =#
 end
 
 # We want a model to be displayed in a sensible way:
@@ -224,8 +209,8 @@ function scalar_eval(mod :: RBFModel, x :: AnyVec{<:Real}, :: Nothing )
 end
 
 "Evaluate model `mod :: RBFModel` at vector `x`."
-( mod :: RBFModel{true} )(x :: AnyVec{<:Real}, ℓ :: Nothing = nothing ) = vec_eval(mod,x,ℓ)
-( mod :: RBFModel{false} )(x :: AnyVec{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
+( mod :: RBFModel{true, KT, WT, PT} where {KT,WT,PT} )(x :: AnyVec{<:Real}, ℓ :: Nothing = nothing ) = vec_eval(mod,x,ℓ)
+( mod :: RBFModel{false, KT, WT, PT} where {KT,WT,PT} )(x :: AnyVec{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
 
 "Evaluate scalar output `ℓ` of model `mod` at vector `x`."
 function (mod :: RBFModel)( x :: AnyVec{<:Real}, ℓ :: Int)

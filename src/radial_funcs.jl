@@ -25,7 +25,7 @@ function ( φ :: Gaussian )( ρ :: Real )
 end
 
 cpd_order( :: Gaussian ) = 0 
-df(φ :: Gaussian, ρ :: Real) = - 2 * φ.α * φ( ρ )
+df(φ :: Gaussian, ρ :: Real) = - 2 * φ.α^2 * ρ * φ( ρ )
 
 # The **Multiquadric** is ``φ(ρ) = - \sqrt{ 1 + (αρ)^2 }`` and also has a positive shape 
 # parameter. We can actually generalize it to the following form:

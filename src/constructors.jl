@@ -38,6 +38,7 @@ end
 # We use `DynamicPolynomials.jl` to generate the Polyomials.
 # Furthermore, we employ Memoization (via `Memoize.jl` and `ThreadSafeDicts`)
 # to save the result for successive usage.
+
 @doc """
     canonical_basis( n:: Int, d :: Int )
 
@@ -52,7 +53,8 @@ polynomials of degree at most `d`.
             push!( basis, DP.Polynomial(prod( Xvar .^ multi_exponent ) ))
         end
     end
-    return basis
+    basis_system = d < 0 ? EmptyPolySystem{n}() : PolynomialSystem( basis... )
+    return basis, basis_system
 end
 
 # ### Solving the Equation System 
@@ -73,36 +75,35 @@ The arguments are
 * an array of data sites `sites` with vector entries from ``ℝ^n``.
 * an array of data values `values` with vector entries from ``ℝ^k``.
 * an array of `ShiftedKernel`s.
-* an array `polys` of polynomial basis functions.
+* a `PolynomialSystem` or `EmptyPolySystem` (in case of deg = -1).
 """
 function coefficients( 
-        sites :: VecOfVecs, 
-        values :: VecOfVecs, 
+        sites :: ST, 
+        values :: VT, 
         kernels :: AnyVec{ShiftedKernel},
-        polys :: Vector{<:DP.Polynomial};
-    )
+        polys :: Union{PolynomialSystem,EmptyPolySystem} #Vector{<:DP.Polynomial};
+    ) where {ST <: AbstractVector, VT <: AbstractVector }
 
     n_out = length(values[1])
     
     ## Φ-matrix, N columns =̂ basis funcs, rows =̂ sites
     N = length(kernels);
     Φ = hcat( (k.(sites) for k ∈ kernels)... )
-    
+    #@show typeof(Φ)
     ## P-matrix, N × Q
     Q = length(polys)
-    P = hcat( (p.(sites) for p ∈ polys)... )
-
+    P = transpose(hcat( (polys.(sites))... ) )
+    
     ## system matrix A
-    Z = zeros( eltype(Φ), Q, Q )
-    A = [ Φ  P;
-          P' Z ];
+    Z = ST <: StaticArray ? @SMatrix(zeros(Int, Q, Q )) : zeros(Int, Q, Q)
+    A = vcat( [ Φ  P ], [ P' Z ] );
 
     ## build rhs
+    padding = VT <: StaticArray ? @SMatrix(zeros(Int, Q, n_out)) : zeros(Int, Q, n_out)
     RHS = [
         transpose( hcat( values... ) );
-        zeros( eltype(eltype(values)), Q, n_out )
+        padding
     ];
-
     ## solve system
     coeff = A \ RHS 
 
@@ -113,15 +114,30 @@ end
 # ### The Actual, Usable Constructor 
 
 # We want the user to be able to pass 1D data as scalars and use the following helpers:
-const NumberOrVector = Union{<:Real, AnyVec{<:Real}}
+function ensure_vec_of_vecs( before :: AbstractVector{<:AbstractVector}; static_arrays = true )
+    len_elems = length(before[1])
+    len_outer = length(before)
+    make_inner_static = len_elems < 100
+    make_outer_static = len_outer < 100
 
-function ensure_vec_of_vecs( before :: AnyVec{ <:Real } )
-    [ SVector{1}([vec,]) for vec ∈ before ]
+    elems = if static_arrays && make_inner_static && !(before[1] isa StaticArray)
+    [ SizedVector{len_elems}(x) for x ∈ before ]
+    else 
+        before
+    end
+
+    if static_arrays && make_outer_static && !(elems isa StaticArray)
+        return SizedVector{len_outer}(elems)
+    else
+        return elems
+    end
 end
-ensure_vec_of_vecs( before :: AnyVec{ <:AnyVec } ) = before
 
-# Helpers to create kernel functions. Should return `SVector` when appropriate. 
-    
+function ensure_vec_of_vecs( before :: AnyVec{ <:Real }; static_arrays = true )
+    ensure_vec_of_vecs( [[x,] for x ∈ before ]; static_arrays )
+end
+
+# Helpers to create kernel functions.    
 "Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `centers`."
 function make_kernels( φ_arr :: AnyVec{<:RadialFunction}, centers :: VecOfVecs )
     @assert length(φ_arr) == length(centers)
@@ -132,26 +148,25 @@ function make_kernels( φ :: RadialFunction, centers :: VecOfVecs )
     [ ShiftedKernel(φ, centers[i]) for i = eachindex( centers ) ]
 end
 
-# We use these methods to construct the RBFSum of a model  
-function RBFSum( kernels :: AnyVec{<:ShiftedKernel}, weights :: AnyMat,
-        num_vars :: Int = -1, num_centers ::Int = -1, num_outputs :: Int = -1;
-        static_arrays :: Bool = true
+# We use these methods to construct the RBFSum of a model.
+# Note, the name is `get_RBFSum` to not run into infinite recursion with 
+# the default constructor.
+function get_RBFSum( kernels :: AnyVec{<:ShiftedKernel}, weights :: AbstractMatrix{<:Real};
+        static_arrays :: Bool = true 
     ) 
-    if num_vars < 0 num_vars = length(kernels[1].c) end
-    if num_centers < 0 num_centers = length(kernels) end
-    if num_outputs < 0 num_outputs = length(weights) end
+    num_centers, num_outputs = size(weights)
 
     ## Sized Matrix?
-    @assert size(weights) == (num_centers, num_outputs) "Weights must have dimensions $((num_centers, num_outputs)) instead of $(size(weights))."
-    if num_centers * num_outputs < 100 && static_arrays
-        if !( weights isa StaticArray)
-            weights = SMatrix{num_centers, num_outputs}(weights)
+    #@assert size(weights) == (num_centers, num_outputs) "Weights must have dimensions $((num_centers, num_outputs)) instead of $(size(weights))."
+    wmat = begin 
+        if static_arrays && !isa(weights, StaticArray) && num_centers * num_outputs < 100
+            SMatrix{num_centers, num_outputs}(weights)
+        else
+            weights
         end
     end
-    
-    #w_vecs = copy.(eachcol(weights))
 
-    RBFSum( kernels, weights, num_vars, num_centers, num_outputs)
+    RBFSum( kernels, wmat )
 end
 
 # We now have all ingredients for the basic outer constructor:
@@ -198,38 +213,38 @@ function RBFModel(
         centers = features
     end
 
-    sites = ensure_vec_of_vecs(features)
-    values = ensure_vec_of_vecs(labels)
-    centers = ensure_vec_of_vecs(centers)
+    sites = ensure_vec_of_vecs(features; static_arrays)
+    values = ensure_vec_of_vecs(labels; static_arrays)
+    centers = ensure_vec_of_vecs(centers; static_arrays)
 
-    ## Use static arrays if there are not too many variables
-    if num_vars < 100 && static_arrays
-        if !(centers[1] isa StaticArray)
-            centers = [ SVector{num_vars}(c) for c ∈ centers ] 
-        end
-    end
+    num_centers = length(centers)
+    kernels = make_kernels(φ, centers)  
     
-    kernels = make_kernels( φ, centers )
     poly_deg = max( poly_deg, cpd_order(φ) - 1 , -1 )
-    poly_basis = canonical_basis( num_vars, poly_deg )
+    poly_basis, poly_basis_sys = canonical_basis( num_vars, poly_deg )
 
-    w, λ = coefficients( sites, values, kernels, poly_basis )
+    w, λ = coefficients( sites, values, kernels, poly_basis_sys )
 
     ## build output polynomials
-    poly_vec = StaticPolynomials.Polynomial[] 
-    for coeff_ℓ ∈ eachcol( λ )
-        push!( poly_vec, StaticPolynomials.Polynomial( poly_basis'coeff_ℓ ) )
-    end 
-    poly_sys = PolynomialSystem( poly_vec... )
+    if poly_deg >= 0
+        poly_vec = StaticPolynomials.Polynomial[] 
+        for coeff_ℓ ∈ eachcol( λ )
+            push!( poly_vec, StaticPolynomials.Polynomial( poly_basis'coeff_ℓ ) )
+        end 
+        poly_sys = PolynomialSystem( poly_vec... )
+    else
+        poly_sys = ZeroPolySystem{num_vars, num_outputs}()
+    end
 
     ## build RBF system 
-    num_centers = length(centers)
-    rbf_sys = RBFSum(kernels, w, num_vars, num_centers, num_outputs; static_arrays)
+    rbf_sys = get_RBFSum(kernels, w; static_arrays)
   
     ## vector output? (dismiss user choice if labels are vectors)
     vec_output = num_outputs == 1 ? vector_output : true
      
-    return RBFModel{vec_output}( rbf_sys, poly_sys, num_vars, num_centers, num_outputs )
+    return RBFModel{vec_output, typeof(rbf_sys.kernels), typeof(rbf_sys.weights), typeof(poly_sys)}(
+         rbf_sys, poly_sys, num_vars, num_centers, num_outputs 
+    )
 end
 
 ### Special Constructors
