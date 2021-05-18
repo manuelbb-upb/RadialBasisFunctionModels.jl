@@ -61,7 +61,7 @@ end
 # For now, we use the `\` operator to solve `A * coeff = RHS`.
 # Furthermore, we allow for different interpolation `sites` and 
 # RBF centers by allowing for passing `kernels`.
-const VecOfVecs{T} = AnyVec{<:AnyVec{<:T}}
+const VecOfVecs{T} = AbstractVector{<:AbstractVector}
 
 @doc """
     coefficients(sites, values, kernels, rad_funcs, polys )
@@ -80,7 +80,7 @@ The arguments are
 function coefficients( 
         sites :: ST, 
         values :: VT, 
-        kernels :: AnyVec{ShiftedKernel},
+        kernels :: AbstractVector{<:ShiftedKernel},
         polys :: Union{PolynomialSystem,EmptyPolySystem} #Vector{<:DP.Polynomial};
     ) where {ST <: AbstractVector, VT <: AbstractVector }
 
@@ -133,13 +133,13 @@ function ensure_vec_of_vecs( before :: AbstractVector{<:AbstractVector}; static_
     end
 end
 
-function ensure_vec_of_vecs( before :: AnyVec{ <:Real }; static_arrays = true )
+function ensure_vec_of_vecs( before :: AbstractVector{ <:Real }; static_arrays = true )
     ensure_vec_of_vecs( [[x,] for x ∈ before ]; static_arrays )
 end
 
 # Helpers to create kernel functions.    
 "Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `centers`."
-function make_kernels( φ_arr :: AnyVec{<:RadialFunction}, centers :: VecOfVecs )
+function make_kernels( φ_arr :: AbstractVector{<:RadialFunction}, centers :: VecOfVecs )
     @assert length(φ_arr) == length(centers)
     [ ShiftedKernel(φ_arr[i], centers[i]) for i = eachindex( centers ) ]
 end
@@ -151,7 +151,7 @@ end
 # We use these methods to construct the RBFSum of a model.
 # Note, the name is `get_RBFSum` to not run into infinite recursion with 
 # the default constructor.
-function get_RBFSum( kernels :: AnyVec{<:ShiftedKernel}, weights :: AbstractMatrix{<:Real};
+function get_RBFSum( kernels :: AbstractVector{<:ShiftedKernel}, weights :: AbstractMatrix{<:Real};
         static_arrays :: Bool = true 
     ) 
     num_centers, num_outputs = size(weights)
@@ -189,12 +189,12 @@ If `features` has 1D data, the output of the model will be a 1D-vector.
 If it should be a scalar instead, set the keyword argument `vector_output` to `false`.
 """
 function RBFModel( 
-        features :: AnyVec{ <:NumberOrVector },
-        labels :: AnyVec{ <:NumberOrVector },
-        φ :: Union{RadialFunction,AnyVec{<:RadialFunction}} = Multiquadric(),
+        features :: AbstractVector{ <:NumberOrVector },
+        labels :: AbstractVector{ <:NumberOrVector },
+        φ :: Union{RadialFunction,AbstractVector{<:RadialFunction}} = Multiquadric(),
         poly_deg :: Int = 1;
-        centers :: AnyVec{ <:NumberOrVector } = Vector{Float16}[],
-        interpolation_indices :: AnyVec{ <: Int } = Int[],
+        centers :: AbstractVector{ <:NumberOrVector } = Vector{Float16}[],
+        interpolation_indices :: AbstractVector{ <: Int } = Int[],
         vector_output :: Bool = true,
         static_arrays :: Bool = true
     )
@@ -264,9 +264,9 @@ Build a model interpolating the feature-label pairs.
 Does not accept `center` keyword argument.
 """
 function RBFInterpolationModel( 
-        features :: AnyVec{ <:NumberOrVector },
-        labels :: AnyVec{ <:NumberOrVector },
-        φ :: Union{RadialFunction,AnyVec{<:RadialFunction}} = Multiquadric(),
+        features :: AbstractVector{ <:NumberOrVector },
+        labels :: AbstractVector{ <:NumberOrVector },
+        φ :: Union{RadialFunction,AbstractVector{<:RadialFunction}} = Multiquadric(),
         poly_deg :: Int = 1;
         vector_output :: Bool = true,
         static_arrays :: Bool = true
@@ -289,8 +289,8 @@ const SymbolToRadialConstructor = NamedTuple((
 ))
 
 function RBFInterpolationModel(
-        features :: AnyVec{ <:NumberOrVector },
-        labels :: AnyVec{ <:NumberOrVector },
+        features :: AbstractVector{ <:NumberOrVector },
+        labels :: AbstractVector{ <:NumberOrVector },
         φ_symb :: Union{Symbol, String},
         φ_args :: Union{Nothing, Tuple} = nothing,
         poly_deg :: Int = 1; kwargs...

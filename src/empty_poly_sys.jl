@@ -8,7 +8,7 @@ Base.length(::EmptyPolySystem) = 0
 "Evaluate for usual vector input. (Scalar input also supported, there are no checks)"
 StaticPolynomials.evaluate(:: EmptyPolySystem, :: Union{R, Vector{R}}) where R<:Real = Int[]
 "Evaluate for sized input."
-StaticPolynomials.evaluate(:: EmptyPolySystem{Nvars}, :: StatVec{R} ) where {Nvars,R<:Real} = SVector{0,Int}()
+StaticPolynomials.evaluate(:: EmptyPolySystem{Nvars}, :: StaticVector ) where {Nvars} = SVector{0,Int}()
 (p :: EmptyPolySystem)( x :: NumberOrVector) = evaluate(p, x)
 
 "Constructor for `EmptyPolySystem` with `n` variables; intended for use when there is an empty polynomial array."
@@ -28,13 +28,16 @@ StaticPolynomials.evaluate(::ZeroPoly, args...) = 0
 "Evaluate for usual vector input. (Scalar input also supported, there are no checks)"
 StaticPolynomials.evaluate(:: ZeroPolySystem{Nvars, Nout}, :: Union{R, Vector{R}}) where {Nvars,Nout,R<:Real} = zeros(R, Nout)
 "Evaluate for sized input."
-StaticPolynomials.evaluate(:: ZeroPolySystem{Nvars, Nout}, :: StatVec{R}) where {Nvars,Nout,R<:Real} = @SVector(zeros(R, Nout))
+function StaticPolynomials.evaluate(
+        :: ZeroPolySystem{Nvars, Nout}, :: StaticVector{S,R}) where {Nvars,Nout, S, R<:Real}
+    return @SVector(zeros(R, Nout))
+end
 (p :: ZeroPolySystem)(x :: NumberOrVector) = evaluate(p, x)
 
 function StaticPolynomials.jacobian( :: ZeroPolySystem{Nvars,Nout}, x:: Union{R, Vector{R}}) where{Nvars,Nout,R<:Real}
     zeros(Int, Nout, Nvars)
 end
-function StaticPolynomials.jacobian( :: ZeroPolySystem{Nvars,Nout}, x:: StatVec{R}) where{Nvars,Nout,R<:Real}
+function StaticPolynomials.jacobian( :: ZeroPolySystem{Nvars,Nout}, x:: StaticVector) where{Nvars,Nout}
     @SMatrix(zeros(Int, Nout, Nvars))
 end
 
@@ -48,7 +51,7 @@ function StaticPolynomials.gradient( :: ZeroPoly{Nvars}, x:: Union{R, Vector{R}}
     zeros(Int, Nvars)
 end
 
-function StaticPolynomials.gradient( :: ZeroPoly{Nvars}, x :: StatVec{R}) where{Nvars,R<:Real}
+function StaticPolynomials.gradient( :: ZeroPoly{Nvars}, x :: StaticVector) where{Nvars}
     @SVector(zeros(Int, Nvars))
 end
 

@@ -13,8 +13,6 @@ Xs = [ SVector{2}(x) for x ∈ X ]
 # Initialize the `RadialFunction` to use for the RBF model:
 φ = Gaussian()
 
-#%%
-
 # Construct an interpolating model with linear polynomial tail:
 rbf = RBFModel( X, Y, φ, -1)
 
