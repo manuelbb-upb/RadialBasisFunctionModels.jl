@@ -11,12 +11,12 @@ A `RadialFunction` with
     φ(ρ) = \\exp( - (α ρ)^2 ).
 ```
 """
-struct Gaussian <: RadialFunction 
-    α :: Real
+struct Gaussian{R<:Real} <: RadialFunction 
+    α :: R
 
-    Gaussian( α :: Real = 1 ) = begin 
+    function Gaussian( α :: R = 1 ) where R<:Real
         @assert α > 0 "The shape parameter `α` must be positive."
-        return new(α)
+        return new{R}(α)
     end
 end
 
@@ -25,7 +25,7 @@ function ( φ :: Gaussian )( ρ :: Real )
 end
 
 cpd_order( :: Gaussian ) = 0 
-df(φ :: Gaussian, ρ :: Real) = - 2 * φ.α * φ( ρ )
+df(φ :: Gaussian, ρ :: Real) = - 2 * φ.α^2 * ρ * φ( ρ )
 
 # The **Multiquadric** is ``φ(ρ) = - \sqrt{ 1 + (αρ)^2 }`` and also has a positive shape 
 # parameter. We can actually generalize it to the following form:
@@ -38,15 +38,15 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{ \\lceil β \\rceil } ( 1 + (αρ)^2 )^β
 ```
 """
-struct Multiquadric <: RadialFunction
-    α :: Real   # shape parameter 
-    β :: Real   # exponent 
+struct Multiquadric{R<:Real,S<:Real} <: RadialFunction
+    α :: R   # shape parameter 
+    β :: S   # exponent 
 
-    Multiquadric(α = 1, β = 1//2 ) = begin 
+    function Multiquadric(α :: R = 1, β :: S = 1//2 ) where {R<:Real, S<:Real}
         @assert α > 0 "The shape parameter `α` must be positive."
         @assert β % 1 != 0 "The exponent must not be an integer."
         @assert β > 0 "The exponent must be positive."
-        new(α,β)
+        new{R,S}(α,β)
     end
 end
 
@@ -66,14 +66,14 @@ A `RadialFunction` with
     φ(ρ) = ( 1 + (αρ)^2 )^{-β}
 ```
 """
-struct InverseMultiquadric <: RadialFunction
-    α :: Real 
-    β :: Real 
+struct InverseMultiquadric{R<:Real,S<:Real} <: RadialFunction
+    α :: R 
+    β :: S 
 
-    InverseMultiquadric( α = 1, β = 1//2 ) = begin 
+    function InverseMultiquadric( α :: Real = 1, β :: Real = 1//2 ) where {R<:Real, S<:Real}
         @assert α > 0 "The shape parameter `α` must be positive."
         @assert β > 0 "The exponent must be positive."
-        new(α, β)
+        new{R,S}(α, β)
     end
 end
 
@@ -94,13 +94,13 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{ \\lceil β \\rceil /2 } ρ^β
 ```
 """
-struct Cubic <: RadialFunction 
-    β :: Real 
+struct Cubic{R<:Real} <: RadialFunction 
+    β :: R
 
-    Cubic( β :: Real = 3 ) = begin
+    function Cubic( β :: R = 3 ) where R<:Real
         @assert β > 0 "The exponent `β` must be positive."
         @assert β % 2 != 0 "The exponent `β` must not be an even number."
-        new(β)
+        new{R}(β)
     end
 end 
 
@@ -138,3 +138,7 @@ end
 
 cpd_order( φ :: ThinPlateSpline ) = φ.k + 1
 df(φ :: ThinPlateSpline, ρ :: Real ) = ρ == 0 ? 0 : (-1)^(φ.k+1) * ρ^(2*φ.k - 1) * ( 2 * φ.k * log(ρ) + 1)
+
+# !!! note 
+#     The thin plate spline with `k = 1` is not differentiable at `ρ=0` but we define the derivative
+#     as 0, which makes results in a continuous extension.
