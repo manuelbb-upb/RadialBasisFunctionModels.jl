@@ -3,7 +3,8 @@ EditURL = "<unknown>/src/RBFModels.jl"
 ```
 
 ````@example RBFModels
-export auto_grad, auto_jac, grad, jac
+export auto_grad, auto_jac, grad, jac, eval_and_auto_grad
+export eval_and_auto_jac, eval_and_grad, eval_and_jac
 ````
 
 Dependencies of this module:
@@ -18,7 +19,7 @@ using LinearAlgebra: norm
 using Lazy: @forward
 
 import Flux.Zygote as Zyg
-#using Flux.Zygote: Buffer, @adjoint
+using Flux.Zygote: Buffer
 ````
 
 # Radial Basis Function Models
@@ -126,12 +127,12 @@ A `RadialFunction` with
     φ(ρ) = \\exp( - (α ρ)^2 ).
 ```
 """
-struct Gaussian <: RadialFunction
-    α :: Real
+struct Gaussian{R<:Real} <: RadialFunction
+    α :: R
 
-    Gaussian( α :: Real = 1 ) = begin
+    function Gaussian( α :: R = 1 ) where R<:Real
         @assert α > 0 "The shape parameter `α` must be positive."
-        return new(α)
+        return new{R}(α)
     end
 end
 
@@ -140,7 +141,7 @@ function ( φ :: Gaussian )( ρ :: Real )
 end
 
 cpd_order( :: Gaussian ) = 0
-df(φ :: Gaussian, ρ :: Real) = - 2 * φ.α * φ( ρ )
+df(φ :: Gaussian, ρ :: Real) = - 2 * φ.α^2 * ρ * φ( ρ )
 ````
 
 The **Multiquadric** is ``φ(ρ) = - \sqrt{ 1 + (αρ)^2 }`` and also has a positive shape
@@ -155,15 +156,15 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{ \\lceil β \\rceil } ( 1 + (αρ)^2 )^β
 ```
 """
-struct Multiquadric <: RadialFunction
-    α :: Real   # shape parameter
-    β :: Real   # exponent
+struct Multiquadric{R<:Real,S<:Real} <: RadialFunction
+    α :: R   # shape parameter
+    β :: S   # exponent
 
-    Multiquadric(α = 1, β = 1//2 ) = begin
+    function Multiquadric(α :: R = 1, β :: S = 1//2 ) where {R<:Real, S<:Real}
         @assert α > 0 "The shape parameter `α` must be positive."
         @assert β % 1 != 0 "The exponent must not be an integer."
         @assert β > 0 "The exponent must be positive."
-        new(α,β)
+        new{R,S}(α,β)
     end
 end
 
@@ -186,14 +187,14 @@ A `RadialFunction` with
     φ(ρ) = ( 1 + (αρ)^2 )^{-β}
 ```
 """
-struct InverseMultiquadric <: RadialFunction
-    α :: Real
-    β :: Real
+struct InverseMultiquadric{R<:Real,S<:Real} <: RadialFunction
+    α :: R
+    β :: S
 
-    InverseMultiquadric( α = 1, β = 1//2 ) = begin
+    function InverseMultiquadric( α :: Real = 1, β :: Real = 1//2 ) where {R<:Real, S<:Real}
         @assert α > 0 "The shape parameter `α` must be positive."
         @assert β > 0 "The exponent must be positive."
-        new(α, β)
+        new{R,S}(α, β)
     end
 end
 
@@ -217,13 +218,13 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{ \\lceil β \\rceil /2 } ρ^β
 ```
 """
-struct Cubic <: RadialFunction
-    β :: Real
+struct Cubic{R<:Real} <: RadialFunction
+    β :: R
 
-    Cubic( β :: Real = 3 ) = begin
+    function Cubic( β :: R = 3 ) where R<:Real
         @assert β > 0 "The exponent `β` must be positive."
         @assert β % 2 != 0 "The exponent `β` must not be an even number."
-        new(β)
+        new{R}(β)
     end
 end
 
@@ -266,23 +267,24 @@ cpd_order( φ :: ThinPlateSpline ) = φ.k + 1
 df(φ :: ThinPlateSpline, ρ :: Real ) = ρ == 0 ? 0 : (-1)^(φ.k+1) * ρ^(2*φ.k - 1) * ( 2 * φ.k * log(ρ) + 1)
 ````
 
+!!! note
+    The thin plate spline with `k = 1` is not differentiable at `ρ=0` but we define the derivative
+    as 0, which makes results in a continuous extension.
+
 From an `RadialFunction` and a vector we can define a shifted kernel function.
-We allow evaluation for statically sized vectors, too:
 
 ````@example RBFModels
-const StatVec{T} = Union{SVector{I,T}, SizedVector{I,T,V}} where {I,V}
-const AnyVec{T} = Union{Vector{T}, StatVec{T}}
-const AnyMat = Union{Matrix, SMatrix, SizedMatrix}
+const NumberOrVector = Union{<:Real, AbstractVector{<:Real}}
 
-struct ShiftedKernel <: Function
-    φ :: RadialFunction
-    c :: AnyVec
+struct ShiftedKernel{RT <: RadialFunction, CT <: AbstractVector{<:Real}} <: Function
+    φ :: RT
+    c :: CT
 end
 
 norm2( vec ) = norm(vec, 2)
 
 "Evaluate kernel `k` at `x - k.c`."
-function (k::ShiftedKernel)( x :: AnyVec{<:Real} )
+function (k::ShiftedKernel)( x :: AbstractVector{<:Real} )
     return k.φ( norm2( x - k.c ) )
 end
 ````
@@ -291,7 +293,7 @@ A vector of ``N`` kernels is a mapping ``ℝ^n → ℝ^N, \ x ↦ [ k₁(x), …
 
 ````@example RBFModels
 "Evaluate ``x ↦ [ k₁(x), …, k_{N_c}(x)]`` at `x`."
-function ( K::AnyVec{ShiftedKernel})( x :: AnyVec{<:Real} )
+function ( K::AbstractVector{<:ShiftedKernel})( x :: AbstractVector{<:Real} )
     [ k(x) for k ∈ K ]
 end
 ````
@@ -304,7 +306,7 @@ We can save redundant effort by passing them to the radial fucntions of the kern
 eval_at_dist( k :: ShiftedKernel , ρ :: Real ) = k.φ(ρ)
 
 "Evaluate ``x ↦ [ k₁(x), …, k_{N_c}(x)]``, provided the distances ``[ ρ_1(x), …, ρ_{N_c}(x) ]``."
-function eval_at_dist( K::AnyVec{ShiftedKernel}, dists :: Vector{<:Real})
+function eval_at_dist( K::AbstractVector{<:ShiftedKernel}, dists :: AbstractVector{<:Real})
     [ eval_at_dist(k,ρ) for (k,ρ) ∈ zip(K,dists) ]
 end
 ````
@@ -315,15 +317,28 @@ where k is the number of outputs.
 We treat the general case ``k\ge 1`` and always assume ``w`` to be a matrix.
 
 ````@example RBFModels
-struct RBFSum
-    kernels :: AnyVec{ShiftedKernel}
-    weights :: AnyMat # weigth vectors, one for each output
+struct RBFSum{
+    KT <: AbstractVector{<:ShiftedKernel},
+    WT <: AbstractMatrix{<:Real}
+}
+    kernels :: KT
+    weights :: WT # can be a normal matrix or a SMatrix
+end
+````
 
-    # information fields
-    num_vars :: Int
-    num_centers :: Int
-    num_outputs :: Int
+Make it display nicely:
 
+````@example RBFModels
+function Base.show( io :: IO, rbf :: RBFSum{KT,WT} ) where {KT, WT}
+    compact = get(io, :compact, false)
+    if compact
+        print(io, "RBFSum{$(KT), $(WT)}")
+    else
+        n_kernels, n_out = size(rbf.weights)
+        print(io, "RBFSum\n")
+        print(io, "* with $(n_kernels) kernels in an array of type $(KT)\n")
+        print(io, "* and a $(n_kernels)×$(n_out) weight matrix of type $(WT).")
+    end
 end
 ````
 
@@ -331,7 +346,7 @@ We can easily evaluate the `ℓ`-th output of the `RBFPart`.
 
 ````@example RBFModels
 "Evaluate output `ℓ` of RBF sum `rbf::RBFSum`"
-function (rbf :: RBFSum)(x :: AnyVec{<:Real}, ℓ :: Int)
+function (rbf :: RBFSum)(x :: AbstractVector{<:Real}, ℓ :: Int)
     (rbf.kernels(x)'rbf.weights[:,ℓ])[1]
 end
 ````
@@ -340,17 +355,17 @@ Use the above method for vector-valued evaluation of the whole sum:
 
 ````@example RBFModels
 "Evaluate `rbf::RBFSum` at `x`."
-(rbf::RBFSum)( x :: AnyVec{<:Real} ) = vec(rbf.kernels(x)'rbf.weights)
+(rbf::RBFSum)( x :: AbstractVector{<:Real} ) = vec(rbf.kernels(x)'rbf.weights)
 ````
 
 As before, we allow to pass precalculated distance vectors:
 
 ````@example RBFModels
-function eval_at_dist( rbf::RBFSum, dists :: AnyVec{<:Real}, ℓ :: Int )
-   eval_at_dist( rbf.kernels, dists )'rbf.weights
+function eval_at_dist( rbf::RBFSum, dists :: AbstractVector{<:Real}, ℓ :: Int )
+   eval_at_dist( rbf.kernels, dists )'rbf.weights[:,ℓ]
 end
 
-function eval_at_dist( rbf :: RBFSum, dists :: AnyVec{<:Real})
+function eval_at_dist( rbf :: RBFSum, dists :: AbstractVector{<:Real})
    vec(eval_at_dist(rbf.kernels, dists )'rbf.weights)
 end
 ````
@@ -359,6 +374,8 @@ For the PolynomialTail we use a `StaticPolynomials.PolynomialSystem`. \
 We now have all ingredients to define the model type.
 
 ````@example RBFModels
+include("empty_poly_sys.jl")
+
 """
     RBFModel{V}
 
@@ -366,43 +383,33 @@ We now have all ingredients to define the model type.
   of outputs is 1. Then scalars are returned.
 
 """
-struct RBFModel{V}
-    rbf :: RBFSum
-    polys :: PolynomialSystem
+struct RBFModel{V, KT, WT, PT <: Union{PolynomialSystem, ZeroPolySystem} }
+    rbf :: RBFSum{KT, WT}
+    polys :: PT
 
     # Information fields
     num_vars :: Int
     num_outputs :: Int
     num_centers :: Int
-    #=
-    function RBFModel( rbf :: RBFSum, polys :: PolynomialSystem, V :: Bool )
-        num_centers = rbf.num_centers
-        num_vars = num_centers > 0 ? length(rbf.kernels[1].c) : nvariables(polys)
-        num_outputs = rbf.num_outputs > 0 ? rbf.num_outputs : npolynomials(polys)
-
-        vec_out = num_outputs == 1 ? V : true
-        return new{vec_out}(
-            num_vars,
-            num_outputs,
-            num_centers
-        )
-    end
-    =#
 end
 ````
 
 We want a model to be displayed in a sensible way:
 
 ````@example RBFModels
-function Base.show( io :: IO, mod :: RBFModel{V} ) where V
+function Base.show( io :: IO, mod :: RBFModel{V, KT, WT, PT} ) where {V,KT,WT,PT}
     compact = get(io, :compact, false)
     if compact
         print(io, "$(mod.num_vars)D$(mod.num_outputs)D-RBFModel{$(V)}")
     else
-        print(io, "RBFModel\n")
-        if !V print(io, "* with scalar output\n") end
-        print(io, "* with $(mod.num_centers) centers\n")
-        print(io, "* mapping from ℝ^$(mod.num_vars) to ℝ^$(mod.num_outputs).")
+        print(io, "RBFModel{$(V),$(KT),$(WT),$(PT)}\n")
+        if V
+            print(io, "\twith vector output ")
+        else
+            print(io, " with scalar output ")
+        end
+        print(io, "and $(mod.num_centers) centers, ")
+        print(io, "mapping from ℝ^$(mod.num_vars) to ℝ^$(mod.num_outputs).")
     end
 end
 ````
@@ -411,20 +418,20 @@ Evaluation is easy. We accept an additional `::Nothing` argument that does nothi
 for now, but saves some typing later.
 
 ````@example RBFModels
-function vec_eval(mod :: RBFModel, x :: AnyVec{<:Real}, :: Nothing)
+function vec_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing)
     return mod.rbf(x) .+ mod.polys( x )
 end
 
-function scalar_eval(mod :: RBFModel, x :: AnyVec{<:Real}, :: Nothing )
+function scalar_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing )
     return (mod.rbf(x) .+ mod.polys( x ))[1]
 end
 
 "Evaluate model `mod :: RBFModel` at vector `x`."
-( mod :: RBFModel{true} )(x :: AnyVec{<:Real}, ℓ :: Nothing = nothing ) = vec_eval(mod,x,ℓ)
-( mod :: RBFModel{false} )(x :: AnyVec{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
+( mod :: RBFModel{true, KT, WT, PT} where {KT,WT,PT} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = vec_eval(mod,x,ℓ)
+( mod :: RBFModel{false, KT, WT, PT} where {KT,WT,PT} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
 
 "Evaluate scalar output `ℓ` of model `mod` at vector `x`."
-function (mod :: RBFModel)( x :: AnyVec{<:Real}, ℓ :: Int)
+function (mod :: RBFModel)( x :: AbstractVector{<:Real}, ℓ :: Int)
     return mod.rbf(x, ℓ) .+ mod.polys.polys[ℓ]( x )
 end
 
@@ -453,12 +460,12 @@ This allows us to define the following methods:
 
 ````@example RBFModels
 "Return the jacobian of `rbf` at `x` (using Zygote)."
-function auto_jac( rbf :: RBFModel, x :: AnyVec{<:Real} )
+function auto_jac( rbf :: RBFModel, x :: AbstractVector{<:Real} )
     Zyg.jacobian( rbf, x )[1]
 end
 
 "Evaluate the model and return the jacobian at the same time."
-function eval_and_auto_jac( rbf :: RBFModel, x :: AnyVec{<:Real} )
+function eval_and_auto_jac( rbf :: RBFModel, x :: AbstractVector{<:Real} )
     y, back = Zyg._pullback( rbf, x )
 
     T = eltype(y)   # TODO does this make sense?
@@ -473,12 +480,12 @@ function eval_and_auto_jac( rbf :: RBFModel, x :: AnyVec{<:Real} )
 end
 
 "Return gradient of output `ℓ` of model `rbf` at point `x` (using Zygote)."
-function auto_grad( rbf :: RBFModel, x :: AnyVec{<:Real}, ℓ :: Int = 1)
+function auto_grad( rbf :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1)
     Zyg.gradient( χ -> rbf(χ, ℓ), x )[1]
 end
 
 "Evaluate output `ℓ` of the model and return the gradient."
-function eval_and_auto_grad( rbf :: RBFModel, x :: AnyVec{<:Real}, ℓ :: Int = 1 )
+function eval_and_auto_grad( rbf :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
     y, back = Zyg._pullback( χ -> rbf(χ, ℓ)[end], x)
 
     grad = back( one(y) )[2]
@@ -489,10 +496,6 @@ end
 !!! note
     We need at least `ChainRules@v.0.7.64` to have `auto_grad` etc. work for StaticArrays,
     see [this issue](https://github.com/FluxML/Zygote.jl/issues/860).
-
-!!! note
-    The above methods do not work if x is a StaticArray due to StaticPolynomials not knowing the
-    custom adjoints. Maybe extendings `ChainRulesCore` helps?
 
 But we don't need `Zygote`, because we can derive the gradients ourselves.
 Assume that ``φ`` is two times continuously differentiable. \
@@ -521,7 +524,7 @@ and let ``ρ`` be the norm ``ρ = \|o\| = \| x- x^i \|``.
 Then, the gradient of a single kernel is:
 
 ````@example RBFModels
-function grad( k :: ShiftedKernel, o :: AnyVec{<:Real}, ρ :: Real )
+function grad( k :: ShiftedKernel, o :: AbstractVector{<:Real}, ρ :: Real )
     ρ == 0 ? zero(k.c) : (df( k.φ, ρ )/ρ) .* o
 end
 ````
@@ -529,7 +532,7 @@ end
 In terms of `x`:
 
 ````@example RBFModels
-function grad( k :: ShiftedKernel, x :: AnyVec{<:Real} )
+function grad( k :: ShiftedKernel, x :: AbstractVector{<:Real} )
     o = x - k.c     # offset vector
     ρ = norm2( o )  # distance
     return grad( k, o, ρ )
@@ -539,58 +542,118 @@ end
 The jacobion of a vector of kernels follows suit:
 
 ````@example RBFModels
-function jacT( K :: AnyVec{ShiftedKernel}, x :: AnyVec{<:Real})
+function jacT( K :: AbstractVector{<:ShiftedKernel}, x :: AbstractVector{<:Real})
     hcat( ( grad(k,x) for k ∈ K )... )
 end
 # precalculated offsets and distances, 1 per kernel
-function jacT( K :: AnyVec{ShiftedKernel}, offsets :: AnyVec{<:AnyVec}, dists :: AnyVec{<:Real} )
+function jacT( K :: AbstractVector{<:ShiftedKernel}, offsets :: AbstractVector{<:AbstractVector}, dists :: AbstractVector{<:Real} )
     hcat( ( grad(k,o,ρ) for (k,o,ρ) ∈ zip(K,offsets,dists) )... )
 end
-jac( K :: AnyVec{ShiftedKernel}, args... ) = transpose( jacT(K, args...) )
+jac( K :: AbstractVector{<:ShiftedKernel}, args... ) = transpose( jacT(K, args...) )
 ````
 
 Hence, the gradients of an RBFSum are easy:
 
 ````@example RBFModels
-function grad( rbf :: RBFSum, x :: AnyVec{<:Real}, ℓ :: Int = 1 )
+function grad( rbf :: RBFSum, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
     vec( jacT( rbf.kernels, x) * rbf.weights[:,ℓ] )
 end
 
-function grad( rbf :: RBFSum, offsets :: AnyVec{<:AnyVec}, dists :: AnyVec{<:Real}, ℓ :: Int)
+function grad( rbf :: RBFSum, offsets :: AbstractVector{<:AbstractVector}, dists :: AbstractVector{<:Real}, ℓ :: Int)
     return vec( jacT( rbf.kernels, offsets, dists ) * rbf.weights[:,ℓ] )
 end
 
-function grad( mod :: RBFModel, x :: AnyVec{<:Real}, ℓ :: Int = 1 )
-    grad(mod.rbf, x, ℓ) + gradient( mod.polys.polys[ℓ], x )
+function _grad( mod :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
+    return grad(mod.rbf, x, ℓ) + gradient( mod.polys.polys[ℓ], x )
+end
+
+function grad( mod :: RBFModel, x :: Vector{<:Real}, ℓ :: Int = 1 )
+    G = _grad(mod, x, ℓ)
+
+    if G isa Vector
+        return G
+    else
+        return [ G.data... ]
+    end
+end
+
+function grad( mod :: RBFModel, x :: StaticVector{T, R} where{T, R<:Real}, ℓ :: Int = 1 )
+    G = _grad(mod, x, ℓ)
+
+    if G isa StaticArray
+        return G
+    else
+        return SizedVector{mod.num_vars}(G)
+    end
 end
 ````
 
 We can exploit our custom evaluation methods for "distances":
 
 ````@example RBFModels
-function eval_and_grad( rbf :: RBFSum, offsets :: AnyVec{<:AnyVec}, dists :: AnyVec{<:Real}, ℓ :: Int)
+function _offsets_and_dists( rbf :: RBFSum, x :: AbstractVector{<:Real} )
+    offsets = [ x - k.c for k ∈ rbf.kernels ]
+    dists = norm2.(offsets)
+    return offsets, dists
+end
+
+function eval_and_grad( rbf :: RBFSum, offsets :: AbstractVector{<:AbstractVector}, dists :: AbstractVector{<:Real}, ℓ :: Int)
     return eval_at_dist( rbf, dists, ℓ ), grad( rbf, offsets, dists, ℓ)
 end
 
-function eval_and_grad( rbf :: RBFSum, x :: AnyVec{<:Real}, ℓ :: Int = 1)
-    offsets = [ x - k.c for k ∈ rbf.kernels ]
-    dists = norm2.(offsets)
+function eval_and_grad( rbf :: RBFSum, x :: AbstractVector{<:Real}, ℓ :: Int = 1)
+    offsets, dists = _offsets_and_dists(rbf, x)
     return eval_and_grad( rbf, offsets, dists, ℓ)
+end
+
+function eval_and_grad( mod :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
+    res_rbf, g_rbf = eval_and_grad( mod.rbf, x, ℓ )
+    res_polys, g_polys = evaluate_and_gradient( mod.polys.polys[ℓ], x )
+    return res_rbf + res_polys, g_rbf + g_polys
 end
 ````
 
 For the jacobian, we use this trick to save evaluations, too.
 
 ````@example RBFModels
-function jacT( rbf :: RBFSum, x :: AnyVec{<:Real} )
-    offsets = [ x - k.c for k ∈ rbf.kernels ]
-    dists = norm2.(offsets)
-    jacT( rbf.kernels, offsets, dists )*rbf.weights
+function jacT( rbf :: RBFSum, x :: AbstractVector{<:Real} )
+    offsets, dists = _offsets_and_dists(rbf, x)
+    jacT( rbf.kernels, offsets, dists ) * rbf.weights
 end
 jac(rbf :: RBFSum, args... ) = transpose( jacT(rbf, args...) )
 
-function jac( mod :: RBFModel, x :: AnyVec{<:Real} )
-    jac( mod.rbf, x) + jacobian( mod.polys, x )
+function _jac( mod :: RBFModel, x :: AbstractVector{<:Real} )
+    jac( mod.rbf, x ) + jacobian( mod.polys, x )
+end
+
+function jac( mod :: RBFModel, x :: Vector{R}) where R<:Real
+    Matrix{R}( _jac(mod, x) )
+end
+
+function jac( mod :: RBFModel, x :: StaticVector{T, R} ) where{T, R<:Real}
+    J = _jac(mod, x)
+    if J isa StaticArray
+        return J
+    else
+        return SizedMatrix{mod.num_outputs, mod.num_vars}(J)
+    end
+end
+````
+
+As before, an "evaluate-and-jacobian" function that saves evaluations:
+
+````@example RBFModels
+function eval_and_jac( rbf :: RBFSum, x :: AbstractVector{<:Real} )
+    offsets, dists = _offsets_and_dists(rbf, x)
+    res = eval_at_dist( rbf, dists )
+    J = transpose( jacT( rbf.kernels, offsets, dists ) * rbf.weights )
+    return res, J
+end
+
+function eval_and_jac( mod :: RBFModel, x :: AbstractVector{<:Real} )
+    res_rbf, J_rbf = eval_and_jac( mod.rbf, x )
+    res_polys, J_polys = evaluate_and_jacobian( mod.polys, x)
+    return res_rbf + res_polys, J_rbf + J_polys
 end
 ````
 
@@ -719,7 +782,8 @@ polynomials of degree at most `d`.
             push!( basis, DP.Polynomial(prod( Xvar .^ multi_exponent ) ))
         end
     end
-    return basis
+    basis_system = d < 0 ? EmptyPolySystem{n}() : PolynomialSystem( basis... )
+    return basis, basis_system
 end
 ````
 
@@ -729,7 +793,7 @@ Furthermore, we allow for different interpolation `sites` and
 RBF centers by allowing for passing `kernels`.
 
 ````@example RBFModels
-const VecOfVecs{T} = AnyVec{<:AnyVec{<:T}}
+const VecOfVecs{T} = AbstractVector{<:AbstractVector}
 
 @doc """
     coefficients(sites, values, kernels, rad_funcs, polys )
@@ -743,36 +807,45 @@ The arguments are
 * an array of data sites `sites` with vector entries from ``ℝ^n``.
 * an array of data values `values` with vector entries from ``ℝ^k``.
 * an array of `ShiftedKernel`s.
-* an array `polys` of polynomial basis functions.
+* a `PolynomialSystem` or `EmptyPolySystem` (in case of deg = -1).
 """
 function coefficients(
-        sites :: VecOfVecs,
-        values :: VecOfVecs,
-        kernels :: AnyVec{ShiftedKernel},
-        polys :: Vector{<:DP.Polynomial};
-    )
+        sites :: ST,
+        values :: VT,
+        kernels :: AbstractVector{<:ShiftedKernel},
+        polys :: Union{PolynomialSystem,EmptyPolySystem} #Vector{<:DP.Polynomial};
+    ) where {ST <: AbstractVector, VT <: AbstractVector }
 
     n_out = length(values[1])
+    S = length(sites)
 
-    # Φ-matrix, N columns =̂ basis funcs, rows =̂ sites
+    # Φ-matrix, S × N, formerly `Φ = hcat( (k.(sites) for k ∈ kernels)... )`
+    # Zygote-compatible:
     N = length(kernels);
-    Φ = hcat( (k.(sites) for k ∈ kernels)... )
+    Φ_buff = Buffer( sites[1], S, N )
+    for (i, k) ∈ enumerate(kernels)
+        Φ_buff[:, i] = k.(sites)
+    end
+    Φ = copy(Φ_buff)
 
-    # P-matrix, N × Q
+    # P-matrix, S × Q, formerly `transpose(hcat( (polys.(sites))... ) )`
     Q = length(polys)
-    P = hcat( (p.(sites) for p ∈ polys)... )
+    P_buff = Buffer( sites[1], S, Q )
+    for (i, s) ∈ enumerate(sites)
+        P_buff[i, :] = polys(s)
+    end
+    P = copy(P_buff)
 
     # system matrix A
-    Z = zeros( eltype(Φ), Q, Q )
-    A = [ Φ  P;
-          P' Z ];
+    Z = ST <: StaticArray ? @SMatrix(zeros(Int, Q, Q )) : zeros(Int, Q, Q)
+    A = vcat( [ Φ  P ], [ P' Z ] );
 
     # build rhs
+    padding = VT <: StaticArray ? @SMatrix(zeros(Int, Q, n_out)) : zeros(Int, Q, n_out)
     RHS = [
         transpose( hcat( values... ) );
-        zeros( eltype(eltype(values)), Q, n_out )
+        padding
     ];
-
     # solve system
     coeff = A \ RHS
 
@@ -786,19 +859,35 @@ end
 We want the user to be able to pass 1D data as scalars and use the following helpers:
 
 ````@example RBFModels
-const NumberOrVector = Union{<:Real, AnyVec{<:Real}}
+function ensure_vec_of_vecs( before :: AbstractVector{<:AbstractVector}; static_arrays = true )
+    len_elems = length(before[1])
+    len_outer = length(before)
+    make_inner_static = len_elems < 100
+    make_outer_static = len_outer < 100
 
-function ensure_vec_of_vecs( before :: AnyVec{ <:Real } )
-    [ SVector{1}([vec,]) for vec ∈ before ]
+    elems = if static_arrays && make_inner_static && !(before[1] isa StaticArray)
+    [ SizedVector{len_elems}(x) for x ∈ before ]
+    else
+        before
+    end
+
+    if static_arrays && make_outer_static && !(elems isa StaticArray)
+        return SizedVector{len_outer}(elems)
+    else
+        return elems
+    end
 end
-ensure_vec_of_vecs( before :: AnyVec{ <:AnyVec } ) = before
+
+function ensure_vec_of_vecs( before :: AbstractVector{ <:Real }; static_arrays = true )
+    ensure_vec_of_vecs( [[x,] for x ∈ before ]; static_arrays )
+end
 ````
 
-Helpers to create kernel functions. Should return `SVector` when appropriate.
+Helpers to create kernel functions.
 
 ````@example RBFModels
 "Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `centers`."
-function make_kernels( φ_arr :: AnyVec{<:RadialFunction}, centers :: VecOfVecs )
+function make_kernels( φ_arr :: AbstractVector{<:RadialFunction}, centers :: VecOfVecs )
     @assert length(φ_arr) == length(centers)
     [ ShiftedKernel(φ_arr[i], centers[i]) for i = eachindex( centers ) ]
 end
@@ -808,28 +897,27 @@ function make_kernels( φ :: RadialFunction, centers :: VecOfVecs )
 end
 ````
 
-We use these methods to construct the RBFSum of a model
+We use these methods to construct the RBFSum of a model.
+Note, the name is `get_RBFSum` to not run into infinite recursion with
+the default constructor.
 
 ````@example RBFModels
-function RBFSum( kernels :: AnyVec{<:ShiftedKernel}, weights :: AnyMat,
-        num_vars :: Int = -1, num_centers ::Int = -1, num_outputs :: Int = -1;
+function get_RBFSum( kernels :: AbstractVector{<:ShiftedKernel}, weights :: AbstractMatrix{<:Real};
         static_arrays :: Bool = true
     )
-    if num_vars < 0 num_vars = length(kernels[1].c) end
-    if num_centers < 0 num_centers = length(kernels) end
-    if num_outputs < 0 num_outputs = length(weights) end
+    num_centers, num_outputs = size(weights)
 
     # Sized Matrix?
-    @assert size(weights) == (num_centers, num_outputs) "Weights must have dimensions $((num_centers, num_outputs)) instead of $(size(weights))."
-    if num_centers * num_outputs < 100 && static_arrays
-        if !( weights isa StaticArray)
-            weights = SMatrix{num_centers, num_outputs}(weights)
+    #@assert size(weights) == (num_centers, num_outputs) "Weights must have dimensions $((num_centers, num_outputs)) instead of $(size(weights))."
+    wmat = begin
+        if static_arrays && !isa(weights, StaticArray) && num_centers * num_outputs < 100
+            SMatrix{num_centers, num_outputs}(weights)
+        else
+            weights
         end
     end
 
-    #w_vecs = copy.(eachcol(weights))
-
-    RBFSum( kernels, weights, num_vars, num_centers, num_outputs)
+    RBFSum( kernels, wmat )
 end
 ````
 
@@ -854,12 +942,12 @@ If `features` has 1D data, the output of the model will be a 1D-vector.
 If it should be a scalar instead, set the keyword argument `vector_output` to `false`.
 """
 function RBFModel(
-        features :: AnyVec{ <:NumberOrVector },
-        labels :: AnyVec{ <:NumberOrVector },
-        φ :: Union{RadialFunction,AnyVec{<:RadialFunction}} = Multiquadric(),
+        features :: AbstractVector{ <:NumberOrVector },
+        labels :: AbstractVector{ <:NumberOrVector },
+        φ :: Union{RadialFunction,AbstractVector{<:RadialFunction}} = Multiquadric(),
         poly_deg :: Int = 1;
-        centers :: AnyVec{ <:NumberOrVector } = Vector{Float16}[],
-        interpolation_indices :: AnyVec{ <: Int } = Int[],
+        centers :: AbstractVector{ <:NumberOrVector } = Vector{Float16}[],
+        interpolation_indices :: AbstractVector{ <: Int } = Int[],
         vector_output :: Bool = true,
         static_arrays :: Bool = true
     )
@@ -878,38 +966,38 @@ function RBFModel(
         centers = features
     end
 
-    sites = ensure_vec_of_vecs(features)
-    values = ensure_vec_of_vecs(labels)
-    centers = ensure_vec_of_vecs(centers)
+    sites = ensure_vec_of_vecs(features; static_arrays)
+    values = ensure_vec_of_vecs(labels; static_arrays)
+    centers = ensure_vec_of_vecs(centers; static_arrays)
 
-    # Use static arrays if there are not too many variables
-    if num_vars < 100 && static_arrays
-        if !(centers[1] isa StaticArray)
-            centers = [ SVector{num_vars}(c) for c ∈ centers ]
-        end
-    end
+    num_centers = length(centers)
+    kernels = make_kernels(φ, centers)
 
-    kernels = make_kernels( φ, centers )
     poly_deg = max( poly_deg, cpd_order(φ) - 1 , -1 )
-    poly_basis = canonical_basis( num_vars, poly_deg )
+    poly_basis, poly_basis_sys = canonical_basis( num_vars, poly_deg )
 
-    w, λ = coefficients( sites, values, kernels, poly_basis )
+    w, λ = coefficients( sites, values, kernels, poly_basis_sys )
 
     # build output polynomials
-    poly_vec = StaticPolynomials.Polynomial[]
-    for coeff_ℓ ∈ eachcol( λ )
-        push!( poly_vec, StaticPolynomials.Polynomial( poly_basis'coeff_ℓ ) )
+    if poly_deg >= 0
+        poly_vec = StaticPolynomials.Polynomial[]
+        for coeff_ℓ ∈ eachcol( λ )
+            push!( poly_vec, StaticPolynomials.Polynomial( poly_basis'coeff_ℓ ) )
+        end
+        poly_sys = PolynomialSystem( poly_vec... )
+    else
+        poly_sys = ZeroPolySystem{num_vars, num_outputs}()
     end
-    poly_sys = PolynomialSystem( poly_vec... )
 
     # build RBF system
-    num_centers = length(centers)
-    rbf_sys = RBFSum(kernels, w, num_vars, num_centers, num_outputs; static_arrays)
+    rbf_sys = get_RBFSum(kernels, w; static_arrays)
 
     # vector output? (dismiss user choice if labels are vectors)
     vec_output = num_outputs == 1 ? vector_output : true
 
-    return RBFModel{vec_output}( rbf_sys, poly_sys, num_vars, num_centers, num_outputs )
+    return RBFModel{vec_output, typeof(rbf_sys.kernels), typeof(rbf_sys.weights), typeof(poly_sys)}(
+         rbf_sys, poly_sys, num_vars, num_centers, num_outputs
+    )
 end
 
 ### Special Constructors
@@ -935,9 +1023,9 @@ Build a model interpolating the feature-label pairs.
 Does not accept `center` keyword argument.
 """
 function RBFInterpolationModel(
-        features :: AnyVec{ <:NumberOrVector },
-        labels :: AnyVec{ <:NumberOrVector },
-        φ :: Union{RadialFunction,AnyVec{<:RadialFunction}} = Multiquadric(),
+        features :: AbstractVector{ <:NumberOrVector },
+        labels :: AbstractVector{ <:NumberOrVector },
+        φ :: Union{RadialFunction,AbstractVector{<:RadialFunction}} = Multiquadric(),
         poly_deg :: Int = 1;
         vector_output :: Bool = true,
         static_arrays :: Bool = true
@@ -961,8 +1049,8 @@ const SymbolToRadialConstructor = NamedTuple((
 ))
 
 function RBFInterpolationModel(
-        features :: AnyVec{ <:NumberOrVector },
-        labels :: AnyVec{ <:NumberOrVector },
+        features :: AbstractVector{ <:NumberOrVector },
+        labels :: AbstractVector{ <:NumberOrVector },
         φ_symb :: Union{Symbol, String},
         φ_args :: Union{Nothing, Tuple} = nothing,
         poly_deg :: Int = 1; kwargs...

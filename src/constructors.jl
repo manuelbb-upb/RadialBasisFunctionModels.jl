@@ -21,17 +21,20 @@ where the variables are non-negative integers.
 """
 function non_negative_solutions( d :: Int, n :: Int )
     if n == 1
-        return d
+        return [d,]
     else
-        solutions = [];
+        no_sols = binomial( d + n - 1, n - 1 )
+        sol_buff = Buffer( [Int[]], no_sols )
+        j = 1
         for i = 0 : d
             ## make RHS smaller by and find all solutions of length `n-1`
             ## then concatenate with difference `d-i`
             for shorter_solution ∈ non_negative_solutions( i, n - 1)
-                push!( solutions, [ d-i ; shorter_solution ] )
+                sol_buff[j] = [ d-i; shorter_solution ]
+                j += 1
             end
         end
-        return solutions
+        return copy( sol_buff )
     end
 end
 
@@ -39,20 +42,25 @@ end
 # Furthermore, we employ Memoization (via `Memoize.jl` and `ThreadSafeDicts`)
 # to save the result for successive usage.
 
+##@memoize ThreadSafeDict 
 @doc """
     canonical_basis( n:: Int, d :: Int )
 
 Return the canonical basis of the space of `n`-variate 
 polynomials of degree at most `d`.
 """
-@memoize ThreadSafeDict function canonical_basis( n :: Int, d :: Int )
+function canonical_basis( n :: Int, d :: Int )
     DP.@polyvar Xvar[1 : n]
-    basis = DP.Polynomial{true,Int}[] # list of basis polynomials
+    no_polys = binomial( n+d, d )
+    basis_buff = Buffer(DP.Polynomial{true,Int}[], no_polys) # list of basis polynomials
+    j = 1
     for d̄ = 0 : d 
         for multi_exponent ∈ non_negative_solutions( d̄, n )
-            push!( basis, DP.Polynomial(prod( Xvar .^ multi_exponent ) ))
+            basis_buff[j] = DP.Polynomial(prod( Xvar .^ multi_exponent ) )
+            j += 1
         end
     end
+    basis = copy(basis_buff)
     basis_system = d < 0 ? EmptyPolySystem{n}() : PolynomialSystem( basis... )
     return basis, basis_system
 end
@@ -85,15 +93,28 @@ function coefficients(
     ) where {ST <: AbstractVector, VT <: AbstractVector }
 
     n_out = length(values[1])
+    S = length(sites)
     
-    ## Φ-matrix, N columns =̂ basis funcs, rows =̂ sites
+    ## Φ-matrix, S × N, formerly `Φ = hcat( (k.(sites) for k ∈ kernels)... )` 
+    ## Zygote-compatible:
     N = length(kernels);
-    Φ = hcat( (k.(sites) for k ∈ kernels)... )
-    #@show typeof(Φ)
-    ## P-matrix, N × Q
+    Φ_buff = Buffer( sites[1], S, N )
+    for (i, k) ∈ enumerate(kernels)
+        Φ_buff[:, i] = k.(sites)
+    end
+    Φ = copy(Φ_buff)
+
+    @show typeof(Φ)
+
+    ## P-matrix, S × Q, formerly `transpose(hcat( (polys.(sites))... ) )`
     Q = length(polys)
-    P = transpose(hcat( (polys.(sites))... ) )
-    
+    P_buff = Buffer( sites[1], S, Q )
+    for (i, s) ∈ enumerate(sites)
+        P_buff[i, :] = polys(s) 
+    end
+    P = copy(P_buff)
+    @show typeof(P)
+
     ## system matrix A
     Z = ST <: StaticArray ? @SMatrix(zeros(Int, Q, Q )) : zeros(Int, Q, Q)
     A = vcat( [ Φ  P ], [ P' Z ] );

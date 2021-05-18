@@ -30,5 +30,5 @@ l = function( x )
     return sum( abs.(rbf_m(x)) )
 end
 
-#Zyg.gradient( l, rand(2))
+#%% Zyg.gradient( l, rand(2))
     

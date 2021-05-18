@@ -10,13 +10,13 @@ export eval_and_auto_jac, eval_and_grad, eval_and_jac
 import DynamicPolynomials as DP
 using StaticPolynomials 
 using ThreadSafeDicts
-using Memoize: @memoize
+using Memoization: @memoize
 using StaticArrays
 using LinearAlgebra: norm
 using Lazy: @forward
 
 import Flux.Zygote as Zyg
-#using Flux.Zygote: Buffer, @adjoint
+using Flux.Zygote: Buffer
 
 # TODO also set Flux.trainable to make inner parameters trainable #src
 
@@ -95,9 +95,7 @@ cpd_order( φ :: RadialFunction) :: Int = nothing;
 df( φ :: RadialFunction, ρ ) = Zyg.gradient( φ, ρ )[1]
 
 # The file `radial_funcs.jl` contains various radial function implementations.
-# ---
 include("radial_funcs.jl")
-# ---
 
 # From an `RadialFunction` and a vector we can define a shifted kernel function.
 const NumberOrVector = Union{<:Real, AbstractVector{<:Real}}
