@@ -5,7 +5,6 @@ version = "0.1.0"
 
 [deps]
 ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
-DynamicPolynomials = "7c1d4256-1411-5781-91ec-d7bc3513ac07"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 Lazy = "50d2b5c4-7a5e-59d5-8109-a42b560f39c0"

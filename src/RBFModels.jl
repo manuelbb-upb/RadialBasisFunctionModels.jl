@@ -7,7 +7,6 @@ export auto_grad, auto_jac, grad, jac, eval_and_auto_grad
 export eval_and_auto_jac, eval_and_grad, eval_and_jac
 
 # Dependencies of this module: 
-import DynamicPolynomials as DP
 using StaticPolynomials 
 using ThreadSafeDicts
 using Memoization: @memoize
@@ -174,9 +173,26 @@ function eval_at_dist( rbf :: RBFSum, dists :: AbstractVector{<:Real})
    vec(eval_at_dist(rbf.kernels, dists )'rbf.weights)
 end
 
-# For the PolynomialTail we use a `StaticPolynomials.PolynomialSystem`. \
-# We now have all ingredients to define the model type.
+# For the PolynomialTail do something similar and 
+# use a `StaticPolynomials.PolynomialSystem` with a weight matrix.
 include("empty_poly_sys.jl")
+struct PolySum{
+        PS <: Union{EmptyPolySystem, PolynomialSystem},
+        WT <: AbstractMatrix
+    }
+    polys :: PS
+    weights :: WT       # n_out × n_polys matrix
+    
+    function PolySum( polys :: PS, weights :: WT) where{PS, WT}
+        _, n_polys = size(weights)
+        @assert npolynomials(polys) == n_polys "Number of polynomials does not macth."
+        new{PS,WT}(polys, weights)
+    end
+end
+
+(p :: PolySum)(x) = p.weights*p.polys(x)
+
+# We now have all ingredients to define the model type.
 
 """
     RBFModel{V}
@@ -185,9 +201,11 @@ include("empty_poly_sys.jl")
   of outputs is 1. Then scalars are returned.
 
 """
-struct RBFModel{V, KT, WT, PT <: Union{PolynomialSystem, ZeroPolySystem} }
-    rbf :: RBFSum{KT, WT}
-    polys :: PT
+struct RBFModel{V, 
+        RS <: RBFSum, 
+        PS <: PolySum }
+    rbf :: RS
+    polys :: PS
 
     ## Information fields
     num_vars :: Int
@@ -196,12 +214,12 @@ struct RBFModel{V, KT, WT, PT <: Union{PolynomialSystem, ZeroPolySystem} }
 end
 
 # We want a model to be displayed in a sensible way:
-function Base.show( io :: IO, mod :: RBFModel{V, KT, WT, PT} ) where {V,KT,WT,PT}
+function Base.show( io :: IO, mod :: RBFModel{V,RS,PS} ) where {V,RS,PS}
     compact = get(io, :compact, false)
     if compact 
         print(io, "$(mod.num_vars)D$(mod.num_outputs)D-RBFModel{$(V)}")
     else
-        print(io, "RBFModel{$(V),$(KT),$(WT),$(PT)}\n")
+        print(io, "RBFModel{$(V),$(RS),$(PS)}\n")
         if V
             print(io, "\twith vector output ")
         else
@@ -223,8 +241,8 @@ function scalar_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing )
 end
 
 "Evaluate model `mod :: RBFModel` at vector `x`."
-( mod :: RBFModel{true, KT, WT, PT} where {KT,WT,PT} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = vec_eval(mod,x,ℓ)
-( mod :: RBFModel{false, KT, WT, PT} where {KT,WT,PT} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
+( mod :: RBFModel{true, RS, PS} where {RS,PS} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = vec_eval(mod,x,ℓ)
+( mod :: RBFModel{false, RS, PS} where {RS,PS} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
 
 "Evaluate scalar output `ℓ` of model `mod` at vector `x`."
 function (mod :: RBFModel)( x :: AbstractVector{<:Real}, ℓ :: Int)
@@ -238,7 +256,7 @@ function (mod :: RBFModel)(x :: Real, ℓ :: NothInt = nothing )
     @assert mod.num_vars == 1 "The model has more than 1 inputs. Provide a vector `x`, not a number."
     mod( [x,], ℓ) 
 end
-include("derivatives.jl")
+#include("derivatives.jl")
 include("constructors.jl")
 
 # [^wild_diss]: “Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.

@@ -15,54 +15,59 @@
 @doc """
     non_negative_solutions( d :: Int, n :: Int)
 
-Return array of solution vectors ``[x_1, …, x_n]`` to the equation
-``x_1 + … + x_n = d``
+Return a matrix with columns that correspond to solution vectors 
+``[x_1, …, x_n]`` to the equation ``x_1 + … + x_n = d``,
 where the variables are non-negative integers.
 """
 function non_negative_solutions( d :: Int, n :: Int )
     if n == 1
-        return [d,]
+        return fill(d,1,1)
     else
-        no_sols = binomial( d + n - 1, n - 1 )
-        sol_buff = Buffer( [Int[]], no_sols )
+        num_sols = binomial( d + n - 1, n - 1)
+        sol_matrix = Matrix{Int}(undef, n, num_sols)
         j = 1
         for i = 0 : d
-            ## make RHS smaller by and find all solutions of length `n-1`
-            ## then concatenate with difference `d-i`
-            for shorter_solution ∈ non_negative_solutions( i, n - 1)
-                sol_buff[j] = [ d-i; shorter_solution ]
-                j += 1
-            end
+            ## find all solutions of length `n-1` that sum to `i` 
+            ## if add `d-i` to each column, then each column 
+            ## has `n` elements and sums to `d`
+            padded_shorter_solutions = vcat( d-i, non_negative_solutions(i, n-1) )
+            num_shorter_sols = size( padded_shorter_solutions, 2 )
+            sol_matrix[:, j : j + num_shorter_sols - 1] .= padded_shorter_solutions
+            j += num_shorter_sols
         end
-        return copy( sol_buff )
+        return sol_matrix
     end
 end
 
-# We use `DynamicPolynomials.jl` to generate the Polyomials.
-# Furthermore, we employ Memoization (via `Memoize.jl` and `ThreadSafeDicts`)
-# to save the result for successive usage.
+function non_negative_solutions_ineq( d :: Int, n :: Int )
+    return hcat( (non_negative_solutions( d̄, n ) for d̄=0:d )... )
+end
+
+# !!! note 
+#     I did an unnecessary rewrite of `non_negative_solutions` to be 
+#     Zygote-compatible. Therefore the buffers...
+#    `Combinatorics` has `multiexponents` which should do the same...
+
+# We **don't** use `DynamicPolynomials.jl` to generate the Polyomials **anymore**.
+# Zygote did overflow when there were calculations with those polynomials.
+# Not a problem for calculating the basis (because of `@nograd`),
+# but when constructing the outputs from them.
+# Instead we directly construct `StaticPolynomial`s.
 
 ##@memoize ThreadSafeDict 
 @doc """
-    canonical_basis( n:: Int, d :: Int )
+    canonical_basis( n:: Int, d :: Int ) :: Union{PolynomialSystem, EmptyPolySystem}
 
 Return the canonical basis of the space of `n`-variate 
 polynomials of degree at most `d`.
 """
-function canonical_basis( n :: Int, d :: Int )
-    DP.@polyvar Xvar[1 : n]
-    no_polys = binomial( n+d, d )
-    basis_buff = Buffer(DP.Polynomial{true,Int}[], no_polys) # list of basis polynomials
-    j = 1
-    for d̄ = 0 : d 
-        for multi_exponent ∈ non_negative_solutions( d̄, n )
-            basis_buff[j] = DP.Polynomial(prod( Xvar .^ multi_exponent ) )
-            j += 1
-        end
+Zyg.@nograd function canonical_basis( n :: Int, d :: Int )
+    if d < 0
+        return EmptyPolySystem{n}()
+    else
+        exponent_matrix = non_negative_solutions_ineq( d, n )
+        return PolynomialSystem( ( Polynomial( [1,], e[:,:] ) for e ∈ eachcol(exponent_matrix) )... )
     end
-    basis = copy(basis_buff)
-    basis_system = d < 0 ? EmptyPolySystem{n}() : PolynomialSystem( basis... )
-    return basis, basis_system
 end
 
 # ### Solving the Equation System 
@@ -242,20 +247,12 @@ function RBFModel(
     kernels = make_kernels(φ, centers)  
     
     poly_deg = max( poly_deg, cpd_order(φ) - 1 , -1 )
-    poly_basis, poly_basis_sys = canonical_basis( num_vars, poly_deg )
+    poly_basis_sys = canonical_basis( num_vars, poly_deg )
 
     w, λ = coefficients( sites, values, kernels, poly_basis_sys )
 
     ## build output polynomials
-    if poly_deg >= 0
-        poly_vec = StaticPolynomials.Polynomial[] 
-        for coeff_ℓ ∈ eachcol( λ )
-            push!( poly_vec, StaticPolynomials.Polynomial( poly_basis'coeff_ℓ ) )
-        end 
-        poly_sys = PolynomialSystem( poly_vec... )
-    else
-        poly_sys = ZeroPolySystem{num_vars, num_outputs}()
-    end
+    poly_sum = PolySum( poly_basis_sys, transpose(λ) )
 
     ## build RBF system 
     rbf_sys = get_RBFSum(kernels, w; static_arrays)
@@ -263,8 +260,8 @@ function RBFModel(
     ## vector output? (dismiss user choice if labels are vectors)
     vec_output = num_outputs == 1 ? vector_output : true
      
-    return RBFModel{vec_output, typeof(rbf_sys.kernels), typeof(rbf_sys.weights), typeof(poly_sys)}(
-         rbf_sys, poly_sys, num_vars, num_centers, num_outputs 
+    return RBFModel{vec_output, typeof(rbf_sys), typeof(poly_sum)}(
+         rbf_sys, poly_sum, num_vars, num_centers, num_outputs 
     )
 end
 

@@ -1,18 +1,15 @@
-## DP = DynamicPolynomials
 ## TODO: Whenever I pass a type (e.g. `Int`), is it better to pass `R`?
 
 "Drop-In Alternative to `StaticPolynomials.PolynomialSystem` when there are no outputs."
 struct EmptyPolySystem{Nvars} end
 Base.length(::EmptyPolySystem) = 0
+StaticPolynomials.npolynomials(::EmptyPolySystem) = 0
 
 "Evaluate for usual vector input. (Scalar input also supported, there are no checks)"
 StaticPolynomials.evaluate(:: EmptyPolySystem, :: Union{R, Vector{R}}) where R<:Real = Int[]
 "Evaluate for sized input."
 StaticPolynomials.evaluate(:: EmptyPolySystem{Nvars}, :: StaticVector ) where {Nvars} = SVector{0,Int}()
 (p :: EmptyPolySystem)( x :: NumberOrVector) = evaluate(p, x)
-
-"Constructor for `EmptyPolySystem` with `n` variables; intended for use when there is an empty polynomial array."
-EmptyPolySystem( :: Vector{<:DP.Polynomial}, n :: Int ) = EmptyPolySystem{n}()
 
 "Alternative to `PolynomialSystem` of an `RBFModel`."
 struct ZeroPolySystem{Nvars,Nout} 
