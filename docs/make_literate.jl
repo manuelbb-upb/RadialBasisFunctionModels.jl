@@ -8,7 +8,7 @@ using Literate
 # Taken from Liteare.jl docs 
 function replace_includes(str)
 
-    included = ["radial_funcs.jl", "empty_poly_sys", "constructors.jl", "derivatives.jl"]
+    included = ["radial_funcs.jl", "empty_poly_sys.jl", "constructors.jl", "derivatives.jl"]
 
     # Here the path loads the files from their proper directory,
     # which may not be the directory of the `examples.jl` file!
