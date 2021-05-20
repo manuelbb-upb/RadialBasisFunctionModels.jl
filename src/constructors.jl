@@ -140,38 +140,24 @@ end
 # ### The Actual, Usable Constructor 
 
 # We want the user to be able to pass 1D data as scalars and use the following helpers:
-function ensure_vec_of_vecs( before :: AbstractVector{<:AbstractVector}; static_arrays = true )
-    len_elems = length(before[1])
-    len_outer = length(before)
-    make_inner_static = len_elems < 100
-    make_outer_static = len_outer < 100
-
-    elems = if static_arrays && make_inner_static && !(before[1] isa StaticArray)
-    [ SizedVector{len_elems}(x) for x ∈ before ]
-    else 
-        before
-    end
-
-    if static_arrays && make_outer_static && !(elems isa StaticArray)
-        return SizedVector{len_outer}(elems)
-    else
-        return elems
-    end
+function ensure_vec_of_vecs( before :: AbstractVector{<:AbstractVector} )
+   return before 
 end
 
-function ensure_vec_of_vecs( before :: AbstractVector{ <:Real }; static_arrays = true )
-    ensure_vec_of_vecs( [[x,] for x ∈ before ]; static_arrays )
+Base.vec( x :: T ) where T<:Real = SVector{1,T}(x)
+function ensure_vec_of_vecs( before :: AbstractVector{ <:Real } )
+    return( [vec(x) for x ∈ before ] )
 end
 
 # Helpers to create kernel functions.    
 "Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `centers`."
 function make_kernels( φ_arr :: AbstractVector{<:RadialFunction}, centers :: VecOfVecs )
     @assert length(φ_arr) == length(centers)
-    [ ShiftedKernel(φ_arr[i], centers[i]) for i = eachindex( centers ) ]
+    [ ShiftedKernel(φ, c) for (φ,c) ∈ zip( φ_arr, centers) ]
 end
 "Return array of `ShiftedKernel`s based function `φ` with centers from `centers`."
 function make_kernels( φ :: RadialFunction, centers :: VecOfVecs )
-    [ ShiftedKernel(φ, centers[i]) for i = eachindex( centers ) ]
+    [ ShiftedKernel(φ, c) for c ∈ centers ]
 end
 
 # We use these methods to construct the RBFSum of a model.
@@ -180,13 +166,14 @@ end
 function get_RBFSum( kernels :: AbstractVector{<:ShiftedKernel}, weights :: AbstractMatrix{<:Real};
         static_arrays :: Bool = true 
     ) 
-    num_centers, num_outputs = size(weights)
+    num_outputs, num_centers = size(weights)
 
     ## Sized Matrix?
     #@assert size(weights) == (num_centers, num_outputs) "Weights must have dimensions $((num_centers, num_outputs)) instead of $(size(weights))."
+    make_static = !isa(weights, StaticArray) && num_centers * num_outputs < 100
     wmat = begin 
-        if static_arrays && !isa(weights, StaticArray) && num_centers * num_outputs < 100
-            SMatrix{num_centers, num_outputs}(weights)
+        if static_arrays && make_static
+            SMatrix{num_outputs, num_centers}(weights)
         else
             weights
         end
@@ -239,11 +226,13 @@ function RBFModel(
         centers = features
     end
 
-    sites = ensure_vec_of_vecs(features; static_arrays)
-    values = ensure_vec_of_vecs(labels; static_arrays)
-    centers = ensure_vec_of_vecs(centers; static_arrays)
+    sites = ensure_vec_of_vecs(features)
+    values = ensure_vec_of_vecs(labels)
+    centers = ensure_vec_of_vecs(centers)
 
     num_centers = length(centers)
+    # TODO benchmark whether array format makes some difference?
+    # centers <: SVector{<:SVector} or Vector{<:SVector} or Vector{<:Vector} makes a difference
     kernels = make_kernels(φ, centers)  
     
     poly_deg = max( poly_deg, cpd_order(φ) - 1 , -1 )
@@ -255,7 +244,7 @@ function RBFModel(
     poly_sum = PolySum( poly_basis_sys, transpose(λ) )
 
     ## build RBF system 
-    rbf_sys = get_RBFSum(kernels, w; static_arrays)
+    rbf_sys = get_RBFSum(kernels, transpose(w); static_arrays)
   
     ## vector output? (dismiss user choice if labels are vectors)
     vec_output = num_outputs == 1 ? vector_output : true

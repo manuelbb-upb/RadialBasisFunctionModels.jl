@@ -147,7 +147,7 @@ function Base.show( io :: IO, rbf :: RBFSum{KT,WT} ) where {KT, WT}
     if compact 
         print(io, "RBFSum{$(KT), $(WT)}")
     else
-        n_kernels, n_out = size(rbf.weights)
+        n_out, n_kernels = size(rbf.weights)
         print(io, "RBFSum\n")
         print(io, "* with $(n_kernels) kernels in an array of type $(KT)\n")
         print(io, "* and a $(n_kernels)×$(n_out) weight matrix of type $(WT).")
@@ -157,20 +157,20 @@ end
 # We can easily evaluate the `ℓ`-th output of the `RBFPart`.
 "Evaluate output `ℓ` of RBF sum `rbf::RBFSum`"
 function (rbf :: RBFSum)(x :: AbstractVector{<:Real}, ℓ :: Int)
-    (rbf.kernels(x)'rbf.weights[:,ℓ])[1]
+    (rbf.weights[ℓ,:]'rbf.kernels(x))[1]
 end
 
 # Use the above method for vector-valued evaluation of the whole sum:
 "Evaluate `rbf::RBFSum` at `x`."
-(rbf::RBFSum)( x :: AbstractVector{<:Real} ) = vec(rbf.kernels(x)'rbf.weights)
+(rbf::RBFSum)( x :: AbstractVector{<:Real} ) = vec(rbf.weights*rbf.kernels(x))
 
 # As before, we allow to pass precalculated distance vectors:
 function eval_at_dist( rbf::RBFSum, dists :: AbstractVector{<:Real}, ℓ :: Int ) 
-   eval_at_dist( rbf.kernels, dists )'rbf.weights[:,ℓ]
+   rbf.weights[ℓ,:]'eval_at_dist( rbf.kernels, dists )
 end
 
 function eval_at_dist( rbf :: RBFSum, dists :: AbstractVector{<:Real})
-   vec(eval_at_dist(rbf.kernels, dists )'rbf.weights)
+   vec(rbf.weights*eval_at_dist(rbf.kernels, dists ))
 end
 
 # For the PolynomialTail do something similar and 
@@ -191,6 +191,7 @@ struct PolySum{
 end
 
 (p :: PolySum)(x) = p.weights*p.polys(x)
+(p :: PolySum)(x,ℓ::Int) = (p.weights[ℓ,:]'p.polys(x))[end]
 
 # We now have all ingredients to define the model type.
 
@@ -205,7 +206,7 @@ struct RBFModel{V,
         RS <: RBFSum, 
         PS <: PolySum }
     rbf :: RS
-    polys :: PS
+    psum :: PS
 
     ## Information fields
     num_vars :: Int
@@ -233,11 +234,11 @@ end
 # Evaluation is easy. We accept an additional `::Nothing` argument that does nothing 
 # for now, but saves some typing later.
 function vec_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing)
-    return mod.rbf(x) .+ mod.polys( x )
+    return mod.rbf(x) .+ mod.psum( x )
 end
 
 function scalar_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing )
-    return (mod.rbf(x) .+ mod.polys( x ))[1]
+    return (mod.rbf(x) .+ mod.psum( x ))[1]
 end
 
 "Evaluate model `mod :: RBFModel` at vector `x`."
@@ -246,7 +247,7 @@ end
 
 "Evaluate scalar output `ℓ` of model `mod` at vector `x`."
 function (mod :: RBFModel)( x :: AbstractVector{<:Real}, ℓ :: Int)
-    return mod.rbf(x, ℓ) .+ mod.polys.polys[ℓ]( x )
+    return mod.rbf(x, ℓ) .+ mod.psum( x, ℓ )
 end
 
 ## scalar input
@@ -256,7 +257,8 @@ function (mod :: RBFModel)(x :: Real, ℓ :: NothInt = nothing )
     @assert mod.num_vars == 1 "The model has more than 1 inputs. Provide a vector `x`, not a number."
     mod( [x,], ℓ) 
 end
-#include("derivatives.jl")
+
+include("derivatives.jl")
 include("constructors.jl")
 
 # [^wild_diss]: “Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.

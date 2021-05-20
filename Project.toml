@@ -13,6 +13,7 @@ Memoization = "6fafb56a-5788-4b4e-91ca-c0cea6611c73"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StaticPolynomials = "62e018b1-6e46-5407-a5a7-97d4fbcae734"
 ThreadSafeDicts = "4239201d-c60e-5e0a-9702-85d713665ba7"
+Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
 julia = "1.6"
