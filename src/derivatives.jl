@@ -94,15 +94,24 @@ jac( K :: AbstractVector{<:ShiftedKernel}, args... ) = transpose( jacT(K, args..
 
 # Hence, the gradients of an RBFSum are easy:
 function grad( rbf :: RBFSum, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
-    vec( jacT( rbf.kernels, x) * rbf.weights[:,ℓ] )    
+    #vec( jacT( rbf.kernels, x) * rbf.weights[:,ℓ] )    
+    vec( rbf.weights[ℓ,:]'jac( rbf.kernels, x ) )
 end
 
 function grad( rbf :: RBFSum, offsets :: AbstractVector{<:AbstractVector}, dists :: AbstractVector{<:Real}, ℓ :: Int)
-    return vec( jacT( rbf.kernels, offsets, dists ) * rbf.weights[:,ℓ] )
+    return vec( rbf.weights[ℓ,:]'jac( rbf.kernels, offsets, dists ) )
 end
 
+# The `grad` method looks very similar for the `PolySum`.
+# We obtain the jacobian of the polynomial basis system via 
+# `PolynomialSystem.jacobian`.
+function grad( psum :: PolySum, x :: AbstractVector{<:Real} , ℓ :: Int = 1)
+    return vec( psum.weights[ℓ,:]'jacobian( psum.polys, x ))
+end
+
+# For the `RBFModel` we simply combine both methods:
 function _grad( mod :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
-    return grad(mod.rbf, x, ℓ) + gradient( mod.polys.polys[ℓ], x )
+    return grad(mod.rbf, x, ℓ) + grad( mod.psum, x, ℓ )
 end
 
 function grad( mod :: RBFModel, x :: Vector{<:Real}, ℓ :: Int = 1 )
@@ -141,25 +150,36 @@ function eval_and_grad( rbf :: RBFSum, x :: AbstractVector{<:Real}, ℓ :: Int =
     return eval_and_grad( rbf, offsets, dists, ℓ)
 end
 
+# For the `PolySum` we use `evaluate_and_jacobian`.
+function eval_and_grad( psum :: PolySum, x :: AbstractVector{<:Real}, ℓ :: Int = 1)
+    res_p, J_p = evaluate_and_jacobian( psum.polys, x )
+    return (psum.weights[ℓ,:]'res_p)[1], vec(psum.weights[ℓ,:]'J_p)
+end
+
+# Combine for `RBFModel`:
 function eval_and_grad( mod :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
     res_rbf, g_rbf = eval_and_grad( mod.rbf, x, ℓ )
-    res_polys, g_polys = evaluate_and_gradient( mod.polys.polys[ℓ], x )
+    res_polys, g_polys = eval_and_grad( mod.psum, x, ℓ )
     return res_rbf + res_polys, g_rbf + g_polys
 end
 
-# For the jacobian, we use this trick to save evaluations, too.
-function jacT( rbf :: RBFSum, x :: AbstractVector{<:Real} )
+# For the jacobian, we use the same trick to save evaluations.
+function jac( rbf :: RBFSum, x :: AbstractVector{<:Real} )
     offsets, dists = _offsets_and_dists(rbf, x)
-    jacT( rbf.kernels, offsets, dists ) * rbf.weights
+    rbf.weights * jac( rbf.kernels, offsets, dists )
 end
-jac(rbf :: RBFSum, args... ) = transpose( jacT(rbf, args...) )
+jacT(rbf :: RBFSum, args... ) = transpose( jac(rbf, args...) )
+
+function jac( psum :: PolySum, x :: AbstractVector{<:Real} )
+    psum.weights * jacobian( psum.polys, x )
+end
 
 function _jac( mod :: RBFModel, x :: AbstractVector{<:Real} )
-    jac( mod.rbf, x ) + jacobian( mod.polys, x )
+    jac( mod.rbf, x ) + jac( mod.psum, x)
 end
 
 function jac( mod :: RBFModel, x :: Vector{R}) where R<:Real
-    Matrix{R}( _jac(mod, x) )
+    Matrix( _jac(mod, x) )
 end
 
 function jac( mod :: RBFModel, x :: StaticVector{T, R} ) where{T, R<:Real}
@@ -171,17 +191,22 @@ function jac( mod :: RBFModel, x :: StaticVector{T, R} ) where{T, R<:Real}
     end 
 end
 
-# As before, an "evaluate-and-jacobian" function that saves evaluations:
+# As before, define an "evaluate-and-jacobian" function that saves evaluations:
 function eval_and_jac( rbf :: RBFSum, x :: AbstractVector{<:Real} )
     offsets, dists = _offsets_and_dists(rbf, x)
     res = eval_at_dist( rbf, dists )
-    J = transpose( jacT( rbf.kernels, offsets, dists ) * rbf.weights )
+    J = rbf.weights * jac( rbf.kernels, offsets, dists )
     return res, J
+end
+
+function eval_and_jac( psum :: PolySum, x :: AbstractVector{<:Real} )
+    res_p, J_p = evaluate_and_jacobian( psum.polys, x )
+    return vec( psum.weights * res_p ), psum.weights * J_p
 end
 
 function eval_and_jac( mod :: RBFModel, x :: AbstractVector{<:Real} )
     res_rbf, J_rbf = eval_and_jac( mod.rbf, x )
-    res_polys, J_polys = evaluate_and_jacobian( mod.polys, x)
+    res_polys, J_polys = eval_and_jac( mod.psum, x)
     return res_rbf + res_polys, J_rbf + J_polys 
 end
 

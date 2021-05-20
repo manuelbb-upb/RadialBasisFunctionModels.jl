@@ -26,9 +26,8 @@ auto_jac( rbf, ξ)
 
 l = function( x )
     global X,Y,φ
-    rbf_m = RBFModel( X, Y, φ, -1; static_arrays = false )
-    return sum( abs.(rbf_m(x)) )
+    rbf_m = RBFModel( X, Y, φ, -1; static_arrays = true )
+    x[1]
 end
 
-#Zyg.gradient( l, rand(2))
-    
+Zyg.gradient( l, rand(2))
