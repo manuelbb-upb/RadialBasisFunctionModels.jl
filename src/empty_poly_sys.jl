@@ -1,5 +1,7 @@
 ## TODO: Whenever I pass a type (e.g. `Int`), is it better to pass `R`?
 
+# If the polynomial degree is < 0, we use an `EmptyPolySystem`:
+
 "Drop-In Alternative to `StaticPolynomials.PolynomialSystem` when there are no outputs."
 struct EmptyPolySystem{Nvars} end
 Base.length(::EmptyPolySystem) = 0
