@@ -29,7 +29,6 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "Readme" => "README.md",
         "Main Module" => "RBFModels.md"
     ],
 )

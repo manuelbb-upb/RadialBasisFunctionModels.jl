@@ -32,12 +32,12 @@ Literate.markdown(
     )
 
 #%% make readme
-Literate.markdown(
+#=Literate.markdown(
     joinpath( @__DIR__, "..", "test", "README.jl"), 
     joinpath( @__DIR__, "src" );    
     documenter = true,
     codefence = "````@example README" => "````"
-)
+)=#
 Literate.markdown(
     joinpath( @__DIR__, "..", "test", "README.jl"), 
     joinpath( @__DIR__, ".." );    
