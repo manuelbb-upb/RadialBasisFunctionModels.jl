@@ -27,53 +27,20 @@ using Flux.Zygote: Buffer
 # ``Y = \{ y^1, …, y^N \} ⊂ ℝ``, an interpolating RBF model ``r\colon ℝ^n → ℝ`` 
 # has the form 
 # ```math 
-    # r(x) = \sum_{i=1}^N w_i φ( \| x - x^i \|_2 ) + p(x),
+# r(x) = \sum_{i=1}^N w_i φ( \| x - x^i \|_2 ) + p(x),
 # ```
 # where `p` is a multivariate polynomial. 
 # The radial function ``φ\colon [0, ∞) \to ℝ`` defines the RBF and we can solve for 
 # the coefficients ``w`` by solving the interpolation system 
 # ```math 
-    # r( x^i ) \stackrel{!}= y^i \quad \text{for all }i=1,…,N
+# \begin{equation}
+# r( x^i ) \stackrel{!}= y^i \quad \text{for all }i=1,…,N
+# \label{eqn:coeff_basic}
+# \end{equation}
 # ```
 
-# For the interpolation system to be solvable we have to choose the 
-# right polynomial space for ``p``.
-# Basically, if the RBF Kernel (or the radial function) is 
-# *conditionally positive definite* of order ``D`` we have to 
-# find a polynomial ``p`` with ``\deg p \ge D-1``.[^wendland]
-# If the kernel is CPD of order ``D=0`` we do not have to add an polynomial 
-# and can interpolate arbitrary (distinct) data points. \
-# Now let ``\{p_j}_{1\le j\le Q}`` be a basis of the polynomial space.
-# Set ``P = [ p_j(x^i) ] ∈ ℝ^{N × Q}`` and ``Φ = φ(\| x^i - x^j \|)``.
-# In case of interpolation, the linear equation system for the coefficients of $r$ is 
-# ```math 
-#     \begin{bmatrix}
-#     Φ & P \\
-#     P^T & 0_{Q × Q}
-#     \end{bmatrix}
-#     \begin{bmatrix}
-#         w \\
-#         λ
-#     \end{bmatrix}
-#     = 
-#     \begin{bmatrix}
-#     Y 
-#     \\ 
-#     0_Q
-#     \end{bmatrix}.
-# ```
-# We can also use differing feature vectors and centers. It is also possible to 
-# determine a least squarse solution to a overdetermined system.
-# Hence, we will denote the number of kernel centers by ``N_c`` from now on.
-
 # !!! note 
-#     When we have vector data ``Y ⊂ ℝ^k``, e.g. from modelling MIMO functions, then 
-#     Julia easily allows for multiple columns in the righthand side of the interpolation 
-#     equation system and we get weight vectors for multiple models, that can 
-#     be thought of as one vector models ``r\colon ℝ^n \to ℝ``.
-
-# !!! note 
-#     See the section about **Constructors** for how we actually solve the equation system.
+#     See the section about **[Getting the Coefficients](@ref)** for how we actually solve the equation system.
 
 # ## Radial Basis Function Sum.
 
@@ -176,6 +143,9 @@ end
 # For the PolynomialTail do something similar and 
 # use a `StaticPolynomials.PolynomialSystem` with a weight matrix.
 include("empty_poly_sys.jl")
+
+# This allows for the `PolySum`. `polys` evaluates the polynomial basis and 
+# `weights` are determined during training/fitting.
 struct PolySum{
         PS <: Union{EmptyPolySystem, PolynomialSystem},
         WT <: AbstractMatrix
@@ -263,5 +233,5 @@ include("constructors.jl")
 
 # [^wild_diss]: “Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.
 # [^wendland]: “Scattered Data Approximation”, Wendland
-
+# [^adv_eco]: “Advanced Econometrics“, Takeshi Amemiya
 end #src

@@ -1,3 +1,7 @@
+using Pkg;
+current_env = Base.load_path()[1]
+Pkg.activate(@__DIR__)
+
 using RBFModels
 using Documenter
 
@@ -26,6 +30,7 @@ makedocs(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://manuelbb-upb.github.io/RBFModels.jl",
         assets=String[],
+        mathengine = Documenter.MathJax2()
     ),
     pages=[
         "Home" => "index.md",
@@ -36,3 +41,5 @@ makedocs(;
 deploydocs(;
     repo="github.com/manuelbb-upb/RBFModels.jl",
 )
+
+Pkg.activate(current_env)
