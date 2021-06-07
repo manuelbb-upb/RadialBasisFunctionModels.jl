@@ -184,7 +184,6 @@ function coefficients(
         S = vcat( S, [P' Z])
         RHS = vcat( RHS, padding )
     end
-   
     ## solve system
     coeff = S \ RHS 
 
@@ -376,21 +375,22 @@ function RBFModel(
     num_outputs = length(labels[1])
     @assert all( length(s) == num_vars for s ∈ features ) "All features must have same dimension."
     @assert all( length(v) == num_outputs for v ∈ labels ) "All labels must have same dimension."
-    num_centers = length(centers)
     
-    if num_centers > 0 
+    if !isempty(centers)
+        C = centers 
         @assert all( length(s) == num_vars for s ∈ centers ) "All centers must have dimension $(num_vars)."
     else
-        centers = features
+        C = copy(features)
     end
-
+    num_centers = length(C)
+    
     sites = ensure_vec_of_vecs(features)
     values = ensure_vec_of_vecs(labels)
-    centers = ensure_vec_of_vecs(centers)
+    c̃enters = ensure_vec_of_vecs(C)
 
     ## TODO benchmark whether array format makes some difference?
     ## centers <: SVector{<:SVector} or Vector{<:SVector} or Vector{<:Vector} makes a difference
-    kernels = make_kernels(φ, centers)  
+    kernels = make_kernels(φ, c̃enters)  
     
     poly_precision = promote_type(Float16, inner_type(sites))
     poly_deg = max( poly_deg, cpd_order(φ) - 1 , -1 )
@@ -411,7 +411,7 @@ function RBFModel(
     vec_output = num_outputs == 1 ? vector_output : true
      
     return RBFModel{vec_output, typeof(rbf_sys), typeof(poly_sum)}(
-         rbf_sys, poly_sum, num_vars, num_centers, num_outputs 
+         rbf_sys, poly_sum, num_vars, num_outputs, num_centers
     )
 end
 
