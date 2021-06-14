@@ -16,11 +16,7 @@ First load the `RadialBasisFunctionModels` package.
 
 ````julia
 using RadialBasisFunctionModels
-````
 
-We also use `Test` to validate the results and `BenchmarkTools` for comparisons.
-
-````julia
 using Test
 using BenchmarkTools
 ````
@@ -56,19 +52,28 @@ rbf = RBFModel( X, Y, φ, 1)
 ````
 
 We can evaluate `rbf` at the data points;
-By default, vectors are returned and for small dimensions
-`StaticArrays` are used. The results will be SVectors or SizedVectors
+By default, vectors are returned.
 
 ````julia
 Z = rbf.(X)
-@test Z isa Vector{<:RadialBasisFunctionModels.StatVec}
-@test length(Z[1]) == 1
 ````
 
-The results should be close to the data labels `Y`.
+Now
 
 ````julia
-@test all( isapprox(Z[i][1], Y[i]; atol = 1e-10) for i = 1 : length(Z) )
+Z isa Vector
+````
+
+and
+
+````julia
+Z[1] isa AbstractVector{<:Real}
+````
+
+The results should be close to the data labels `Y`, i.e., `Z[1] ≈ Y[1]` etc.
+
+````julia
+@test all( isapprox(Z[i][1], Y[i]; atol = 1e-10) for i = 1 : length(Z) ) #jl
 ````
 
 `X` contains Floats, but we can pass them to `rbf`.
@@ -83,25 +88,21 @@ For 1 dimensional labels we can actually disable the vector output:
 ````julia
 rbf_scalar = RBFInterpolationModel( X, Y, φ, 1; vector_output = false)
 Z_scalar = rbf_scalar.( X )
-@test Z_scalar isa Vector{Float64}
-@test all( Z_scalar[i] == Z[i][1] for i = 1 : length(Z) )
+typeof(Z_scalar[1])
 ````
 
-Also, the `StaticArrays` can be disabled:
+Also, the internal use of `StaticArrays` can be disabled:
 
 ````julia
 rbf_vec = RBFInterpolationModel( X, Y, φ, 1; static_arrays = false)
-Z_vec = rbf_vec.(X)
-@test Z_vec isa Vector{Vector{Float64}}
 ````
 
-Whether `StaticArrays` are used and if vectors are returned is
-indicated by the type flags:
+The return type of the evaluation function should be independent of that setting.
+It rather depends on the input type.
 
 ````julia
-@test rbf isa RBFModel{true, true}          # SVectors and vector output
-@test rbf_scalar isa RBFModel{true, false}  # SVectors and scalar output
-@test rbf_vec isa RBFModel{false, true}     # Vectors and vector output
+Xstatic = SVector{1}(X[1])
+typeof(rbf_vec(Xstatic))
 ````
 
 The data precision of the training data is preserved when evaluating.
@@ -110,7 +111,6 @@ The data precision of the training data is preserved when evaluating.
 X_f0 = Float32.(X)
 Y_f0 = f.(X_f0)
 rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 1; static_arrays = false )
-@test rbf_f0.(X_f0) isa Vector{Vector{Float32}}
 ````
 
 Benchmarks for the small 1in1out data set. Construction:

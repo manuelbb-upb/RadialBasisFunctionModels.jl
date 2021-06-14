@@ -106,6 +106,8 @@ struct RBFSum{
 }
     kernels :: KT
     weights :: WT # can be a normal matrix or a SMatrix
+
+    num_outputs :: Int
 end
 
 # Make it display nicely:
@@ -121,15 +123,21 @@ function Base.show( io :: IO, rbf :: RBFSum{KT,WT} ) where {KT, WT}
     end        
 end
 
-# We can easily evaluate the `ℓ`-th output of the `RBFPart`.
+# We can easily evaluate the `ℓ`-th output of the `RBFPart`:
 "Evaluate output `ℓ` of RBF sum `rbf::RBFSum`"
-function (rbf :: RBFSum)(x :: AbstractVector{<:Real}, ℓ :: Int)
+function (rbf :: RBFSum)(x :: VT, ℓ :: Int) where VT <: AbstractVector{<:Real}
     (rbf.weights[ℓ,:]'rbf.kernels(x))[1]
 end
 
-# Use the above method for vector-valued evaluation of the whole sum:
+# The overall output is a vector, and we also get it via matrix multiplication.
+# First, define helpers so that the right type is returned:
+## TODO I am not sure how to handle precision here. #src
+type_guard( T :: Type{<:Vector}, x :: AbstractVector{<:Real}, :: Int ) = convert( T, x )
+type_guard( :: Type{<:SVector}, x :: AbstractVector, n_out :: Int) = SVector{n_out}(x)
+type_guard( :: Type{<:SizedVector}, x :: AbstractVector, n_out :: Int) = SizedVector{n_out}(x)
+
 "Evaluate `rbf::RBFSum` at `x`."
-(rbf::RBFSum)( x :: AbstractVector{<:Real} ) = vec(rbf.weights*rbf.kernels(x))
+(rbf::RBFSum)( x :: VT ) where VT <: AbstractVector{<:Real} = type_guard( VT, rbf.weights*rbf.kernels(x), rbf.num_outputs )
 
 # As before, we allow to pass precalculated distance vectors:
 function eval_at_dist( rbf::RBFSum, dists :: AbstractVector{<:Real}, ℓ :: Int ) 
@@ -152,16 +160,17 @@ struct PolySum{
     }
     polys :: PS
     weights :: WT       # n_out × n_polys matrix
+    num_outputs :: Int
     
     function PolySum( polys :: PS, weights :: WT) where{PS, WT}
-        _, n_polys = size(weights)
+        n_out, n_polys = size(weights)
         @assert npolynomials(polys) == n_polys "Number of polynomials does not macth."
-        new{PS,WT}(polys, weights)
+        new{PS,WT}(polys, weights, n_out)
     end
 end
 
-(p :: PolySum)(x) = p.weights*p.polys(x)
-(p :: PolySum)(x,ℓ::Int) = (p.weights[ℓ,:]'p.polys(x))[end]
+(p :: PolySum)(x :: VT) where VT <: AbstractVector{<:Real} = type_guard( VT, p.weights*p.polys(x), p.num_outputs)
+(p :: PolySum)(x :: AbstractVector{<:Real},ℓ::Int) = (p.weights[ℓ,:]'p.polys(x))[end]
 
 # We now have all ingredients to define the model type.
 

@@ -39,10 +39,17 @@ Literate.markdown(
     codefence = "````@example README" => "````"
 )=#
 Literate.markdown(
-    joinpath( @__DIR__, "..", "test", "README.jl"), 
+    joinpath( @__DIR__, "..", "test", "README_template.jl"), 
     joinpath( @__DIR__, ".." );    
     documenter = false,
-    codefence = "````julia" => "````"
+    codefence = "````julia" => "````",
+    name = "README"
+)
+
+Literate.script(
+    joinpath( @__DIR__, "..", "test", "README_template.jl"), 
+    joinpath( @__DIR__, "..", "test" );    
+    name = "README"
 )
 
 #%%

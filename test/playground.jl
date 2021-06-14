@@ -1,7 +1,7 @@
 # quick script i use during development …
 using StaticArrays
 using RadialBasisFunctionModels
-import Flux.Zygote as Zyg
+import Zygote as Zyg
 
 f = x -> [ 1 + x[1]; sum(x.^2) ]
 X = [ -3 .+ 6 * rand(2) for i = 1 : 5]

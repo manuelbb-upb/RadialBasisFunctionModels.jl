@@ -318,13 +318,14 @@ end
 # We use these methods to construct the RBFSum of a model.
 # Note, the name is `get_RBFSum` to not run into infinite recursion with 
 # the default constructor.
+# For small dimensions, we want to use an SMatrix, with the idea being to save 
+# time in successive evaluations, even if the construction takes a bit longer.
 function get_RBFSum( kernels :: AbstractVector{<:ShiftedKernel}, weights :: AbstractMatrix{<:Real};
         static_arrays :: Bool = true 
     ) 
     num_outputs, num_centers = size(weights)
 
     ## Sized Matrix?
-    #@assert size(weights) == (num_centers, num_outputs) "Weights must have dimensions $((num_centers, num_outputs)) instead of $(size(weights))."
     make_static = !isa(weights, StaticArray) && num_centers * num_outputs < 100
     wmat = begin 
         if static_arrays && make_static
@@ -334,9 +335,27 @@ function get_RBFSum( kernels :: AbstractVector{<:ShiftedKernel}, weights :: Abst
         end
     end
 
-    RBFSum( kernels, wmat )
+    RBFSum( kernels, wmat, num_outputs )
 end
 
+# Use a similar constuctor for the polynomial sum: 
+function get_PolySum( polys :: Union{EmptyPolySystem, PolynomialSystem}, weights :: AbstractMatrix{<:Real};
+        static_arrays :: Bool = true 
+    ) 
+    num_outputs, num_regressors = size(weights)
+
+    ## Sized Matrix?
+    make_static = !isa(weights, StaticArray) && num_regressors * num_outputs < 100
+    wmat = begin 
+        if static_arrays && make_static
+            SMatrix{num_outputs, num_regressors}(weights)
+        else
+            weights
+        end
+    end
+
+    PolySum( polys, wmat )
+end
 
 # We now have all ingredients for the basic outer constructor:
 
@@ -402,7 +421,7 @@ function RBFModel(
         w, λ = constrained_coefficients( w, λ, S, RHS, interpolation_indices)
     end
     ## build output polynomials
-    poly_sum = PolySum( poly_basis_sys, transpose(λ) )
+    poly_sum = get_PolySum( poly_basis_sys, transpose(λ) )
 
     ## build RBF system 
     rbf_sys = get_RBFSum(kernels, transpose(w); static_arrays)
