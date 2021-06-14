@@ -14,8 +14,8 @@ using StaticArrays
 using LinearAlgebra: norm
 using Lazy: @forward
 
-import Flux.Zygote as Zyg
-using Flux.Zygote: Buffer
+import Zygote as Zyg
+using Zygote: Buffer
 
 # TODO also set Flux.trainable to make inner parameters trainable #src
 

@@ -2,7 +2,7 @@
 # ## Derivatives 
 
 # The easiest way to provide derivatives is via Automatic Differentiation.
-# We have imported `Flux.Zygote` as `Zyg`. 
+# We have imported `Zygote` as `Zyg`. 
 # For automatic differentiation we need custom adjoints for some `StaticArrays`:
 Zyg.@adjoint (T::Type{<:SizedMatrix})(x::AbstractMatrix) = T(x), dv -> (nothing, dv)
 Zyg.@adjoint (T::Type{<:SizedVector})(x::AbstractVector) = T(x), dv -> (nothing, dv)

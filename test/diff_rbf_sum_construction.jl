@@ -1,5 +1,5 @@
 import RadialBasisFunctionModels 
-import Flux.Zygote as Zyg
+import Zygote as Zyg
 using Test
 
 #%%
