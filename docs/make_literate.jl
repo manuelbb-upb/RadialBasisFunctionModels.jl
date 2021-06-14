@@ -24,10 +24,10 @@ end
 #%%
 
 Literate.markdown(
-    joinpath( @__DIR__, "..", "src", "RBFModels.jl"), 
+    joinpath( @__DIR__, "..", "src", "RadialBasisFunctionModels.jl"), 
     joinpath( @__DIR__, "src" );    
     documenter = true,
-    codefence = "````@example RBFModels" => "````",
+    codefence = "````@example RadialBasisFunctionModels" => "````",
     preprocess = replace_includes
     )
 

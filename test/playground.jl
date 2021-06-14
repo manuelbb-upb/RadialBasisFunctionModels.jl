@@ -1,6 +1,6 @@
 # quick script i use during development …
 using StaticArrays
-using RBFModels
+using RadialBasisFunctionModels
 import Flux.Zygote as Zyg
 
 f = x -> [ 1 + x[1]; sum(x.^2) ]

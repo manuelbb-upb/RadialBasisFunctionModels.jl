@@ -1,6 +1,6 @@
-using RBFModels
+using RadialBasisFunctionModels
 using Test
 
-@testset "RBFModels.jl" begin
+@testset "RadialBasisFunctionModels.jl" begin
     include("README.jl")
 end

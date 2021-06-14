@@ -1,9 +1,9 @@
-# # RBFModels
+# # RadialBasisFunctionModels
 # 
-# [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://manuelbb-upb.github.io/RBFModels.jl/stable)
-# [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://manuelbb-upb.github.io/RBFModels.jl/dev)
-# [![Build Status](https://github.com/manuelbb-upb/RBFModels.jl/workflows/CI/badge.svg)](https://github.com/manuelbb-upb/RBFModels.jl/actions)
-# [![Coverage](https://codecov.io/gh/manuelbb-upb/RBFModels.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/manuelbb-upb/RBFModels.jl)
+# [![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://manuelbb-upb.github.io/RadialBasisFunctionModels.jl/stable)
+# [![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://manuelbb-upb.github.io/RadialBasisFunctionModels.jl/dev)
+# [![Build Status](https://github.com/manuelbb-upb/RadialBasisFunctionModels.jl/workflows/CI/badge.svg)](https://github.com/manuelbb-upb/RadialBasisFunctionModels.jl/actions)
+# [![Coverage](https://codecov.io/gh/manuelbb-upb/RadialBasisFunctionModels.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/manuelbb-upb/RadialBasisFunctionModels.jl)
 # 
 
 # # Description
@@ -13,8 +13,8 @@
 
 # # Usage Examples 
 
-# First load the `RBFModels` package.
-using RBFModels
+# First load the `RadialBasisFunctionModels` package.
+using RadialBasisFunctionModels
 
 # We also use `Test` to validate the results and `BenchmarkTools` for comparisons.
 using Test
@@ -40,7 +40,7 @@ rbf = RBFModel( X, Y, φ, 1)
 # By default, vectors are returned and for small dimensions 
 # `StaticArrays` are used. The results will be SVectors or SizedVectors
 Z = rbf.(X)
-@test Z isa Vector{<:RBFModels.StatVec}
+@test Z isa Vector{<:RadialBasisFunctionModels.StatVec}
 @test length(Z[1]) == 1
 # The results should be close to the data labels `Y`.
 @test all( isapprox(Z[i][1], Y[i]; atol = 1e-10) for i = 1 : length(Z) )

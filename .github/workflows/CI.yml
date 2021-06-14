@@ -54,9 +54,9 @@ jobs:
       - run: |
           julia --project=docs -e '
             using Documenter: DocMeta, doctest
-            using RBFModels
-            DocMeta.setdocmeta!(RBFModels, :DocTestSetup, :(using RBFModels); recursive=true)
-            doctest(RBFModels)'
+            using RadialBasisFunctionModels
+            DocMeta.setdocmeta!(RadialBasisFunctionModels, :DocTestSetup, :(using RadialBasisFunctionModels); recursive=true)
+            doctest(RadialBasisFunctionModels)'
       - run: julia --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

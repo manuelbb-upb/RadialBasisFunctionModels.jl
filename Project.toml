@@ -1,4 +1,4 @@
-name = "RBFModels"
+name = "RadialBasisFunctionModels"
 uuid = "48790e7e-73b2-491a-afa5-62818081adcb"
 authors = ["Manuel Berkemeier"]
 version = "0.1.0"

@@ -9,12 +9,12 @@ begin
 	using Revise
 	using Pkg
 	Pkg.activate(tempname())
-	Pkg.develop(url="https://github.com/manuelbb-upb/RBFModels.jl.git")
+	Pkg.develop(url="https://github.com/manuelbb-upb/RadialBasisFunctionModels.jl.git")
 	Pkg.add("Flux")
 	Pkg.add("MLDatasets")
 	using Flux, MLDatasets
 	using Random, Statistics
-	using RBFModels
+	using RadialBasisFunctionModels
 end
 
 # ╔═╡ 8c51b60d-e1b5-439d-ab67-ef7813490684

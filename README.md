@@ -1,9 +1,9 @@
-# RBFModels
+# RadialBasisFunctionModels
 
-[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://manuelbb-upb.github.io/RBFModels.jl/stable)
-[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://manuelbb-upb.github.io/RBFModels.jl/dev)
-[![Build Status](https://github.com/manuelbb-upb/RBFModels.jl/workflows/CI/badge.svg)](https://github.com/manuelbb-upb/RBFModels.jl/actions)
-[![Coverage](https://codecov.io/gh/manuelbb-upb/RBFModels.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/manuelbb-upb/RBFModels.jl)
+[![Stable](https://img.shields.io/badge/docs-stable-blue.svg)](https://manuelbb-upb.github.io/RadialBasisFunctionModels.jl/stable)
+[![Dev](https://img.shields.io/badge/docs-dev-blue.svg)](https://manuelbb-upb.github.io/RadialBasisFunctionModels.jl/dev)
+[![Build Status](https://github.com/manuelbb-upb/RadialBasisFunctionModels.jl/workflows/CI/badge.svg)](https://github.com/manuelbb-upb/RadialBasisFunctionModels.jl/actions)
+[![Coverage](https://codecov.io/gh/manuelbb-upb/RadialBasisFunctionModels.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/manuelbb-upb/RadialBasisFunctionModels.jl)
 
 # Description
 This package provides Radial Basis Function (RBF) models with polynomial tails.
@@ -12,10 +12,10 @@ and nonlinear data.
 
 # Usage Examples
 
-First load the `RBFModels` package.
+First load the `RadialBasisFunctionModels` package.
 
 ````julia
-using RBFModels
+using RadialBasisFunctionModels
 ````
 
 We also use `Test` to validate the results and `BenchmarkTools` for comparisons.
@@ -61,7 +61,7 @@ By default, vectors are returned and for small dimensions
 
 ````julia
 Z = rbf.(X)
-@test Z isa Vector{<:RBFModels.StatVec}
+@test Z isa Vector{<:RadialBasisFunctionModels.StatVec}
 @test length(Z[1]) == 1
 ````
 

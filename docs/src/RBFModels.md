@@ -1,15 +1,15 @@
 ```@meta
-EditURL = "<unknown>/src/RBFModels.jl"
+EditURL = "<unknown>/src/RadialBasisFunctionModels.jl"
 ```
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 export auto_grad, auto_jac, grad, jac, eval_and_auto_grad
 export eval_and_auto_jac, eval_and_grad, eval_and_jac
 ````
 
 Dependencies of this module:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 using StaticPolynomials
 using ThreadSafeDicts
 using Memoization: @memoize
@@ -23,7 +23,7 @@ using Flux.Zygote: Buffer
 
 # Radial Basis Function Models
 
-The sub-module `RBFModels` provides utilities to work with radial
+The sub-module `RadialBasisFunctionModels` provides utilities to work with radial
 basis function [RBF] models.
 Given ``N`` data sites ``X = \{ x^1, …, x^N \} ⊂ ℝ^n`` and values
 ``Y = \{ y^1, …, y^N \} ⊂ ℝ``, an interpolating RBF model ``r\colon ℝ^n → ℝ``
@@ -51,7 +51,7 @@ The function ``k(•) = φ(\|•\|_2)`` is radially symmetric around the origin.
 
 We define an abstract super type for radial functions:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 abstract type RadialFunction <: Function end
 ````
 
@@ -60,21 +60,21 @@ an evaluation method.
 It takes the radius/distance ``ρ = ρ(x) = \| x - x^i \|`` from
 ``x`` to a specific center ``x^i``.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 (φ :: RadialFunction )( ρ :: Real ) :: Real = Nothing;
 nothing #hide
 ````
 
 We also need the so called order of conditional positive definiteness:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 cpd_order( φ :: RadialFunction) :: Int = nothing;
 nothing #hide
 ````
 
 The derivative can also be specified. It defaults to
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 df( φ :: RadialFunction, ρ ) = Zyg.gradient( φ, ρ )[1]
 ````
 
@@ -84,7 +84,7 @@ The file `radial_funcs.jl` contains various radial function implementations.
 The **Gaussian** is defined by ``φ(ρ) = \exp \left( - (αρ)^2 \right)``, where
 ``α`` is a shape parameter to fine-tune the function.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 """
     Gaussian( α = 1 ) <: RadialFunction
 
@@ -113,7 +113,7 @@ df(φ :: Gaussian, ρ :: Real) = - 2 * φ.α^2 * ρ * φ( ρ )
 The **Multiquadric** is ``φ(ρ) = - \sqrt{ 1 + (αρ)^2 }`` and also has a positive shape
 parameter. We can actually generalize it to the following form:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 """
     Multiquadric( α = 1, β = 1//2 ) <: RadialFunction
 
@@ -144,7 +144,7 @@ df(φ :: Multiquadric, ρ :: Real ) = (-1)^(ceil(Int, φ.β)) * 2 * φ.α * φ.�
 
 Related is the **Inverse Multiquadric** `` φ(ρ) = (1+(αρ)^2)^{-β}`` is related:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 """
     InverseMultiquadric( α = 1, β = 1//2 ) <: RadialFunction
 
@@ -175,7 +175,7 @@ df(φ :: InverseMultiquadric, ρ :: Real ) = - 2 * φ.α^2 * φ.β * ρ * ( 1 + 
 The **Cubic** is ``φ(ρ) = ρ^3``.
 It can also be generalized:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 """
     Cubic( β = 3 ) <: RadialFunction
 
@@ -207,7 +207,7 @@ The thin plate spline is usually defined via
 We provide a generalized version, which defaults to
 ``φ(ρ) = - ρ^4 \log( ρ )``.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 """
     ThinPlateSpline( k = 2 ) <: RadialFunction
 
@@ -239,7 +239,7 @@ df(φ :: ThinPlateSpline, ρ :: Real ) = ρ == 0 ? 0 : (-1)^(φ.k+1) * ρ^(2*φ.
 
 From an `RadialFunction` and a vector we can define a shifted kernel function.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 const NumberOrVector = Union{<:Real, AbstractVector{<:Real}}
 
 struct ShiftedKernel{RT <: RadialFunction, CT <: AbstractVector{<:Real}} <: Function
@@ -257,7 +257,7 @@ end
 
 A vector of ``N`` kernels is a mapping ``ℝ^n → ℝ^N, \ x ↦ [ k₁(x), …, k_N(x)] ``.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 "Evaluate ``x ↦ [ k₁(x), …, k_{N_c}(x)]`` at `x`."
 function ( K::AbstractVector{<:ShiftedKernel})( x :: AbstractVector{<:Real} )
     [ k(x) for k ∈ K ]
@@ -267,7 +267,7 @@ end
 Suppose, we have calculated the distances ``\|x - x^i\|`` beforehand.
 We can save redundant effort by passing them to the radial fucntions of the kernels.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 "Evaluate `k.φ` for distance `ρ` where `ρ` should equal `x - k.c` for the argument `x`."
 eval_at_dist( k :: ShiftedKernel , ρ :: Real ) = k.φ(ρ)
 
@@ -282,7 +282,7 @@ part of ``r`` are ``w``, where ``w`` is a vector of length ``N_c`` or a matrix i
 where k is the number of outputs.
 We treat the general case ``k\ge 1`` and always assume ``w`` to be a matrix.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 struct RBFSum{
     KT <: AbstractVector{<:ShiftedKernel},
     WT <: AbstractMatrix{<:Real}
@@ -294,7 +294,7 @@ end
 
 Make it display nicely:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function Base.show( io :: IO, rbf :: RBFSum{KT,WT} ) where {KT, WT}
     compact = get(io, :compact, false)
     if compact
@@ -310,7 +310,7 @@ end
 
 We can easily evaluate the `ℓ`-th output of the `RBFPart`.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 "Evaluate output `ℓ` of RBF sum `rbf::RBFSum`"
 function (rbf :: RBFSum)(x :: AbstractVector{<:Real}, ℓ :: Int)
     (rbf.weights[ℓ,:]'rbf.kernels(x))[1]
@@ -319,14 +319,14 @@ end
 
 Use the above method for vector-valued evaluation of the whole sum:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 "Evaluate `rbf::RBFSum` at `x`."
 (rbf::RBFSum)( x :: AbstractVector{<:Real} ) = vec(rbf.weights*rbf.kernels(x))
 ````
 
 As before, we allow to pass precalculated distance vectors:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function eval_at_dist( rbf::RBFSum, dists :: AbstractVector{<:Real}, ℓ :: Int )
    rbf.weights[ℓ,:]'eval_at_dist( rbf.kernels, dists )
 end
@@ -341,7 +341,7 @@ use a `StaticPolynomials.PolynomialSystem` with a weight matrix.
 
 If the polynomial degree is < 0, we use an `EmptyPolySystem`:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 "Drop-In Alternative to `StaticPolynomials.PolynomialSystem` when there are no outputs."
 struct EmptyPolySystem{Nvars} end
 Base.length(::EmptyPolySystem) = 0
@@ -365,7 +365,7 @@ end
 This allows for the `PolySum`. `polys` evaluates the polynomial basis and
 `weights` are determined during training/fitting.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 struct PolySum{
         PS <: Union{EmptyPolySystem, PolynomialSystem},
         WT <: AbstractMatrix
@@ -386,7 +386,7 @@ end
 
 We now have all ingredients to define the model type.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 """
     RBFModel{V}
 
@@ -409,7 +409,7 @@ end
 
 We want a model to be displayed in a sensible way:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function Base.show( io :: IO, mod :: RBFModel{V,RS,PS} ) where {V,RS,PS}
     compact = get(io, :compact, false)
     if compact
@@ -430,7 +430,7 @@ end
 Evaluation is easy. We accept an additional `::Nothing` argument that does nothing
 for now, but saves some typing later.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function vec_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing)
     return mod.rbf(x) .+ mod.psum( x )
 end
@@ -463,7 +463,7 @@ The easiest way to provide derivatives is via Automatic Differentiation.
 We have imported `Flux.Zygote` as `Zyg`.
 For automatic differentiation we need custom adjoints for some `StaticArrays`:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 Zyg.@adjoint (T::Type{<:SizedMatrix})(x::AbstractMatrix) = T(x), dv -> (nothing, dv)
 Zyg.@adjoint (T::Type{<:SizedVector})(x::AbstractVector) = T(x), dv -> (nothing, dv)
 Zyg.@adjoint (T::Type{<:SArray})(x::AbstractArray) = T(x), dv -> (nothing, dv)
@@ -471,7 +471,7 @@ Zyg.@adjoint (T::Type{<:SArray})(x::AbstractArray) = T(x), dv -> (nothing, dv)
 
 This allows us to define the following methods:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 "Return the jacobian of `rbf` at `x` (using Zygote)."
 function auto_jac( rbf :: RBFModel, x :: AbstractVector{<:Real} )
     Zyg.jacobian( rbf, x )[1]
@@ -536,7 +536,7 @@ For a fixed center ``x^i`` let ``o`` be the distance vector ``x - x^i``
 and let ``ρ`` be the norm ``ρ = \|o\| = \| x- x^i \|``.
 Then, the gradient of a single kernel is:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function grad( k :: ShiftedKernel, o :: AbstractVector{<:Real}, ρ :: Real )
     ρ == 0 ? zero(k.c) : (df( k.φ, ρ )/ρ) .* o
 end
@@ -544,7 +544,7 @@ end
 
 In terms of `x`:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function grad( k :: ShiftedKernel, x :: AbstractVector{<:Real} )
     o = x - k.c     # offset vector
     ρ = norm2( o )  # distance
@@ -554,7 +554,7 @@ end
 
 The jacobion of a vector of kernels follows suit:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function jacT( K :: AbstractVector{<:ShiftedKernel}, x :: AbstractVector{<:Real})
     hcat( ( grad(k,x) for k ∈ K )... )
 end
@@ -567,7 +567,7 @@ jac( K :: AbstractVector{<:ShiftedKernel}, args... ) = transpose( jacT(K, args..
 
 Hence, the gradients of an RBFSum are easy:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function grad( rbf :: RBFSum, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
     #vec( jacT( rbf.kernels, x) * rbf.weights[:,ℓ] )
     vec( rbf.weights[ℓ,:]'jac( rbf.kernels, x ) )
@@ -582,7 +582,7 @@ The `grad` method looks very similar for the `PolySum`.
 We obtain the jacobian of the polynomial basis system via
 `PolynomialSystem.jacobian`.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function grad( psum :: PolySum, x :: AbstractVector{<:Real} , ℓ :: Int = 1)
     return vec( psum.weights[ℓ,:]'jacobian( psum.polys, x ))
 end
@@ -590,7 +590,7 @@ end
 
 For the `RBFModel` we simply combine both methods:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function _grad( mod :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
     return grad(mod.rbf, x, ℓ) + grad( mod.psum, x, ℓ )
 end
@@ -618,7 +618,7 @@ end
 
 We can exploit our custom evaluation methods for "distances":
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function _offsets_and_dists( rbf :: RBFSum, x :: AbstractVector{<:Real} )
     offsets = [ x - k.c for k ∈ rbf.kernels ]
     dists = norm2.(offsets)
@@ -637,7 +637,7 @@ end
 
 For the `PolySum` we use `evaluate_and_jacobian`.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function eval_and_grad( psum :: PolySum, x :: AbstractVector{<:Real}, ℓ :: Int = 1)
     res_p, J_p = evaluate_and_jacobian( psum.polys, x )
     return (psum.weights[ℓ,:]'res_p)[1], vec(psum.weights[ℓ,:]'J_p)
@@ -646,7 +646,7 @@ end
 
 Combine for `RBFModel`:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function eval_and_grad( mod :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
     res_rbf, g_rbf = eval_and_grad( mod.rbf, x, ℓ )
     res_polys, g_polys = eval_and_grad( mod.psum, x, ℓ )
@@ -656,7 +656,7 @@ end
 
 For the jacobian, we use the same trick to save evaluations.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function jac( rbf :: RBFSum, x :: AbstractVector{<:Real} )
     offsets, dists = _offsets_and_dists(rbf, x)
     rbf.weights * jac( rbf.kernels, offsets, dists )
@@ -687,7 +687,7 @@ end
 
 As before, define an "evaluate-and-jacobian" function that saves evaluations:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function eval_and_jac( rbf :: RBFSum, x :: AbstractVector{<:Real} )
     offsets, dists = _offsets_and_dists(rbf, x)
     res = eval_at_dist( rbf, dists )
@@ -775,11 +775,11 @@ For ``ξ = 0`` the first term vanishes due to L'Hôpital's rule:
 ∇ψ_j(0) = φ''(0) e^j.
 ```
 
-This file is included from within RBFModels.jl #src
+This file is included from within RadialBasisFunctionModels.jl #src
 
 ## Getting the Coefficients
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 const VecOfVecs{T} = AbstractVector{<:AbstractVector}
 ````
 
@@ -800,7 +800,7 @@ The canonical basis is ``x_1^{α_1} x_2^{α_2} … x_n^{α_n}`` with
 For ``\bar{d} \le d`` we can recursively get the non-negative integer solutions for
 ``Σ_i α_i = \bar{d}`` with the following function:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 @doc """
     non_negative_solutions( d :: Int, n :: Int)
 
@@ -845,7 +845,7 @@ but when constructing the outputs from them.
 Instead we directly construct `StaticPolynomial`s and define a
 `PolynomialSystem` that evaluates all basis polynomials.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 @memoize ThreadSafeDict function _canonical_basis(n :: Int, d::Int, OneType :: Type = Float64)
     if d < 0
         return EmptyPolySystem{n}()
@@ -919,7 +919,7 @@ Julia automatically computes the LS solution with `S\RHS`.
     equation system and we get weight vectors for multiple models, that can
     be thought of as one vector model ``r\colon ℝ^n \to ℝ^k``.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 @doc """
     coefficients(sites, values, kernels, rad_funcs, polys )
 
@@ -1019,7 +1019,7 @@ Setting the derivatives to zero leads to \eqref{eqn:cls1} via
 ```
 See [^adv_eco] for details.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function constrained_coefficients(
         w :: AbstractMatrix{<:Real},
         λ :: AbstractMatrix{<:Real},
@@ -1060,7 +1060,7 @@ For the case that mentioned above, that is, interpolation at a
 subset of sites, we can easily build the ``E`` matrix from the ``S``
 matrix by taking the corresponding rows.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function constrained_coefficients(
         w :: AbstractMatrix{<:Real},
         λ :: AbstractMatrix{<:Real},
@@ -1079,7 +1079,7 @@ end
 
 We want the user to be able to pass 1D data as scalars and use the following helpers:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function ensure_vec_of_vecs( before :: AbstractVector{<:AbstractVector} )
    return before
 end
@@ -1100,7 +1100,7 @@ end
 
 Helpers to create kernel functions.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 "Return array of `ShiftedKernel`s based functions in `φ_arr` with centers from `centers`."
 function make_kernels( φ_arr :: AbstractVector{<:RadialFunction}, centers :: VecOfVecs )
     @assert length(φ_arr) == length(centers)
@@ -1116,7 +1116,7 @@ We use these methods to construct the RBFSum of a model.
 Note, the name is `get_RBFSum` to not run into infinite recursion with
 the default constructor.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 function get_RBFSum( kernels :: AbstractVector{<:ShiftedKernel}, weights :: AbstractMatrix{<:Real};
         static_arrays :: Bool = true
     )
@@ -1139,7 +1139,7 @@ end
 
 We now have all ingredients for the basic outer constructor:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 @doc """
     RBFModel( features, labels, φ = Multiquadric(), poly_deg = 1; kwargs ... )
 
@@ -1219,7 +1219,7 @@ end
 
 We offer some specialized models (that simply wrap the main type).
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 struct RBFInterpolationModel
     model :: RBFModel
 end
@@ -1229,7 +1229,7 @@ end
 
 The constructor is a tiny bit simpler and additional checks take place:
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 """
     RBFInterpolationModel(features, labels, φ, poly_deg; kwargs… )
 
@@ -1265,7 +1265,7 @@ end
 We want to provide a convenient alternative constructor for interpolation models
 so that the radial function can be defined by passing a `Symbol` or `String`.
 
-````@example RBFModels
+````@example RadialBasisFunctionModels
 const SymbolToRadialConstructor = NamedTuple((
     :gaussian => Gaussian,
     :multiquadric => Multiquadric,

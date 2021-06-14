@@ -1,5 +1,5 @@
 
-# This file is included from within RBFModels.jl #src 
+# This file is included from within RadialBasisFunctionModels.jl #src 
 
 # ## Getting the Coefficients
 const VecOfVecs{T} = AbstractVector{<:AbstractVector}

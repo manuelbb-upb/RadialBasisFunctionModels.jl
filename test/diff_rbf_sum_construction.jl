@@ -1,15 +1,15 @@
-import RBFModels 
+import RadialBasisFunctionModels 
 import Flux.Zygote as Zyg
 using Test
 
 #%%
 function build_rbf_sum(num_kernels = 5, num_vars = 2, num_outputs = 3; static = false)
-    φ = RBFModels.Gaussian()
+    φ = RadialBasisFunctionModels.Gaussian()
     centers = [ rand(num_vars) for i = 1 : num_kernels ]
-    kernels = RBFModels.make_kernels(φ, centers)
+    kernels = RadialBasisFunctionModels.make_kernels(φ, centers)
 
     weights = rand(num_kernels, num_outputs )
-    RBFModels.get_RBFSum( kernels, weights, num_vars, num_kernels, num_outputs; static_arrays = static)
+    RadialBasisFunctionModels.get_RBFSum( kernels, weights, num_vars, num_kernels, num_outputs; static_arrays = static)
 end
 
 l = function(x)
@@ -21,6 +21,6 @@ end
 
 #%%
 l = function(x)
-    RBFModels.canonical_basis(3, 2)
+    RadialBasisFunctionModels.canonical_basis(3, 2)
     x
 end

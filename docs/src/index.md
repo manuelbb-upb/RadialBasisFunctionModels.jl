@@ -1,12 +1,12 @@
 ```@meta
-CurrentModule = RBFModels
+CurrentModule = RadialBasisFunctionModels
 ```
 
-# RBFModels
+# RadialBasisFunctionModels
 
 ```@index
 ```
 
 ```@autodocs
-Modules = [RBFModels]
+Modules = [RadialBasisFunctionModels]
 ```

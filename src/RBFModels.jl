@@ -1,4 +1,4 @@
-module RBFModels #src
+module RadialBasisFunctionModels #src
 
 export RBFModel, RBFInterpolationModel #src
 export Multiquadric, InverseMultiquadric, Gaussian, Cubic, ThinPlateSpline #src
@@ -21,7 +21,7 @@ using Flux.Zygote: Buffer
 
 # # Radial Basis Function Models 
 
-# The sub-module `RBFModels` provides utilities to work with radial 
+# The sub-module `RadialBasisFunctionModels` provides utilities to work with radial 
 # basis function [RBF] models.  
 # Given ``N`` data sites ``X = \{ x^1, …, x^N \} ⊂ ℝ^n`` and values 
 # ``Y = \{ y^1, …, y^N \} ⊂ ℝ``, an interpolating RBF model ``r\colon ℝ^n → ℝ`` 
