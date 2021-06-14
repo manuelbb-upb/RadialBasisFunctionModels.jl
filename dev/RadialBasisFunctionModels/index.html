@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Radial Basis Function Models · RadialBasisFunctionModels.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link rel="canonical" href="https://manuelbb-upb.github.io/RadialBasisFunctionModels.jl/RBFModels/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">RadialBasisFunctionModels.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li><a class="tocitem" href="../RadialBasisFunctionModels/">Main Module</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Radial Basis Function Models</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Radial Basis Function Models</a></li></ul></nav><div class="docs-right"><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><pre><code class="language-julia">export auto_grad, auto_jac, grad, jac, eval_and_auto_grad
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Main Module · RadialBasisFunctionModels.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link rel="canonical" href="https://manuelbb-upb.github.io/RadialBasisFunctionModels.jl/RadialBasisFunctionModels/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">RadialBasisFunctionModels.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>Main Module</a><ul class="internal"><li><a class="tocitem" href="#Radial-Basis-Function-Sum."><span>Radial Basis Function Sum.</span></a></li><li class="toplevel"><a class="tocitem" href="#Some-Radial-Functions"><span>Some Radial Functions</span></a></li><li><a class="tocitem" href="#Derivatives"><span>Derivatives</span></a></li><li><a class="tocitem" href="#Getting-the-Coefficients"><span>Getting the Coefficients</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Main Module</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Main Module</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/manuelbb-upb/RadialBasisFunctionModels.jl/blob/master/src/RadialBasisFunctionModels.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><pre><code class="language-julia">export auto_grad, auto_jac, grad, jac, eval_and_auto_grad
 export eval_and_auto_jac, eval_and_grad, eval_and_jac</code></pre><p>Dependencies of this module:</p><pre><code class="language-julia">using StaticPolynomials
 using ThreadSafeDicts
 using Memoization: @memoize
@@ -558,7 +558,6 @@ function coefficients(
         S = vcat( S, [P&#39; Z])
         RHS = vcat( RHS, padding )
     end
-
     # solve system
     coeff = S \ RHS
 
@@ -700,21 +699,22 @@ function RBFModel(
     num_outputs = length(labels[1])
     @assert all( length(s) == num_vars for s ∈ features ) &quot;All features must have same dimension.&quot;
     @assert all( length(v) == num_outputs for v ∈ labels ) &quot;All labels must have same dimension.&quot;
-    num_centers = length(centers)
 
-    if num_centers &gt; 0
+    if !isempty(centers)
+        C = centers
         @assert all( length(s) == num_vars for s ∈ centers ) &quot;All centers must have dimension $(num_vars).&quot;
     else
-        centers = features
+        C = copy(features)
     end
+    num_centers = length(C)
 
     sites = ensure_vec_of_vecs(features)
     values = ensure_vec_of_vecs(labels)
-    centers = ensure_vec_of_vecs(centers)
+    c̃enters = ensure_vec_of_vecs(C)
 
     # TODO benchmark whether array format makes some difference?
     # centers &lt;: SVector{&lt;:SVector} or Vector{&lt;:SVector} or Vector{&lt;:Vector} makes a difference
-    kernels = make_kernels(φ, centers)
+    kernels = make_kernels(φ, c̃enters)
 
     poly_precision = promote_type(Float16, inner_type(sites))
     poly_deg = max( poly_deg, cpd_order(φ) - 1 , -1 )
@@ -735,7 +735,7 @@ function RBFModel(
     vec_output = num_outputs == 1 ? vector_output : true
 
     return RBFModel{vec_output, typeof(rbf_sys), typeof(poly_sum)}(
-         rbf_sys, poly_sum, num_vars, num_centers, num_outputs
+         rbf_sys, poly_sum, num_vars, num_outputs, num_centers
     )
 end
 
@@ -760,19 +760,7 @@ function RBFInterpolationModel(
     @assert length(features) == length(labels) &quot;Provide as many features as labels!&quot;
     mod = RBFModel(features, labels, φ, poly_deg; vector_output, static_arrays)
     return RBFInterpolationModel( mod )
-end
-
-
-function RBFLeastSquaresModel(
-    features :: AbstractVector{ &lt;:NumberOrVector },
-    labels :: AbstractVector{ &lt;:NumberOrVector },
-    φ :: Union{RadialFunction,AbstractVector{&lt;:RadialFunction}} = Multiquadric(),
-    poly_deg :: Int = 1;
-    vector_output :: Bool = true,
-    static_arrays :: Bool = true
-    )
-    nothing
-end</code></pre><pre class="documenter-example-output">RBFLeastSquaresModel (generic function with 3 methods)</pre><p>We want to provide a convenient alternative constructor for interpolation models so that the radial function can be defined by passing a <code>Symbol</code> or <code>String</code>.</p><pre><code class="language-julia">const SymbolToRadialConstructor = NamedTuple((
+end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.RBFInterpolationModel</pre><p>We want to provide a convenient alternative constructor for interpolation models so that the radial function can be defined by passing a <code>Symbol</code> or <code>String</code>.</p><pre><code class="language-julia">const SymbolToRadialConstructor = NamedTuple((
     :gaussian =&gt; Gaussian,
     :multiquadric =&gt; Multiquadric,
     :inv_multiquadric =&gt; InverseMultiquadric,
@@ -780,13 +768,8 @@ end</code></pre><pre class="documenter-example-output">RBFLeastSquaresModel (gen
     :thin_plate_spline =&gt; ThinPlateSpline
 ))
 
-function RBFInterpolationModel(
-        features :: AbstractVector{ &lt;:NumberOrVector },
-        labels :: AbstractVector{ &lt;:NumberOrVector },
-        φ_symb :: Union{Symbol, String},
-        φ_args :: Union{Nothing, Tuple} = nothing,
-        poly_deg :: Int = 1; kwargs...
-    )
+function _get_constructor( φ_symb :: Union{Symbol, String}, φ_args :: Union{Nothing, Tuple} )
+
     # which radial function to use?
     radial_symb = Symbol( lowercase( string( φ_symb ) ) )
     if !(radial_symb ∈ keys(SymbolToRadialConstructor))
@@ -801,5 +784,21 @@ function RBFInterpolationModel(
         φ = constructor()
     end
 
-    RBFInterpolationModel( features, labels, φ, poly_deg; kwargs... )
-end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.RBFInterpolationModel</pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-wild_diss"><a class="tag is-link" href="#citeref-wild_diss">wild_diss</a>“Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.</li><li class="footnote" id="footnote-wendland"><a class="tag is-link" href="#citeref-wendland">wendland</a>“Scattered Data Approximation”, Wendland</li><li class="footnote" id="footnote-adv_eco"><a class="tag is-link" href="#citeref-adv_eco">adv_eco</a>“Advanced Econometrics“, Takeshi Amemiya</li></ul></section></article><nav class="docs-footer"><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 14 June 2021 13:52">Monday 14 June 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+    return φ
+end
+
+for op ∈ [ :RBFInterpolationModel, :RBFModel ]
+    @eval begin
+        function $op(
+                features :: AbstractVector{ &lt;:NumberOrVector },
+                labels :: AbstractVector{ &lt;:NumberOrVector },
+                φ_symb :: Union{Symbol, String},
+                φ_args :: Union{Nothing, Tuple} = nothing,
+                poly_deg :: Int = 1; kwargs...
+            )
+
+            φ = _get_constructor( φ_symb, φ_args )
+            return $op(features, labels, φ, poly_deg; kwargs... )
+        end
+    end
+end</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-wild_diss"><a class="tag is-link" href="#citeref-wild_diss">wild_diss</a>“Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.</li><li class="footnote" id="footnote-wendland"><a class="tag is-link" href="#citeref-wendland">wendland</a>“Scattered Data Approximation”, Wendland</li><li class="footnote" id="footnote-adv_eco"><a class="tag is-link" href="#citeref-adv_eco">adv_eco</a>“Advanced Econometrics“, Takeshi Amemiya</li></ul></section></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Monday 14 June 2021 13:52">Monday 14 June 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
