@@ -82,7 +82,7 @@ function grad( k :: ShiftedKernel, x :: AbstractVector{<:Real} )
     return grad( k, o, ρ )
 end 
 
-# The jacobion of a vector of kernels follows suit:
+# The jacobian of a vector of kernels follows suit:
 function jacT( K :: AbstractVector{<:ShiftedKernel}, x :: AbstractVector{<:Real})
     hcat( ( grad(k,x) for k ∈ K )... )
 end 

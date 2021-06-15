@@ -6,7 +6,3 @@ CurrentModule = RadialBasisFunctionModels
 
 ```@index
 ```
-
-```@autodocs
-Modules = [RadialBasisFunctionModels]
-```

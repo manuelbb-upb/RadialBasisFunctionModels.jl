@@ -265,7 +265,7 @@ end
 ````
 
 Suppose, we have calculated the distances ``\|x - x^i\|`` beforehand.
-We can save redundant effort by passing them to the radial fucntions of the kernels.
+We can save redundant effort by passing them to the radial functions of the kernels.
 
 ````@example RadialBasisFunctionModels
 "Evaluate `k.φ` for distance `ρ` where `ρ` should equal `x - k.c` for the argument `x`."
@@ -313,7 +313,7 @@ end
 We can easily evaluate the `ℓ`-th output of the `RBFPart`:
 
 ````@example RadialBasisFunctionModels
-"Evaluate output `ℓ` of RBF sum `rbf::RBFSum`"
+# @doc "Evaluate output `ℓ` of RBF sum `rbf::RBFSum`"
 function (rbf :: RBFSum)(x :: VT, ℓ :: Int) where VT <: AbstractVector{<:Real}
     (rbf.weights[ℓ,:]'rbf.kernels(x))[1]
 end
@@ -327,8 +327,8 @@ type_guard( T :: Type{<:Vector}, x :: AbstractVector{<:Real}, :: Int ) = convert
 type_guard( :: Type{<:SVector}, x :: AbstractVector, n_out :: Int) = SVector{n_out}(x)
 type_guard( :: Type{<:SizedVector}, x :: AbstractVector, n_out :: Int) = SizedVector{n_out}(x)
 
-"Evaluate `rbf::RBFSum` at `x`."
-(rbf::RBFSum)( x :: VT ) where VT <: AbstractVector{<:Real} = type_guard( VT, rbf.weights*rbf.kernels(x), rbf.num_outputs )
+# @doc "Evaluate `rbf::RBFSum` at `x`."
+(rbf :: RBFSum)( x :: VT ) where VT <: AbstractVector{<:Real} = type_guard( VT, rbf.weights*rbf.kernels(x), rbf.num_outputs )
 ````
 
 As before, we allow to pass precalculated distance vectors:
@@ -440,20 +440,20 @@ for now, but saves some typing later.
 
 ````@example RadialBasisFunctionModels
 function vec_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing)
-    return mod.rbf(x) .+ mod.psum( x )
+    return mod.rbf(x) + mod.psum( x )
 end
 
 function scalar_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing )
-    return (mod.rbf(x) .+ mod.psum( x ))[1]
+    return (mod.rbf(x) + mod.psum( x ))[1]
 end
 
-"Evaluate model `mod :: RBFModel` at vector `x`."
+# @doc "Evaluate model `mod :: RBFModel` at vector `x`."
 ( mod :: RBFModel{true, RS, PS} where {RS,PS} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = vec_eval(mod,x,ℓ)
 ( mod :: RBFModel{false, RS, PS} where {RS,PS} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
 
 "Evaluate scalar output `ℓ` of model `mod` at vector `x`."
 function (mod :: RBFModel)( x :: AbstractVector{<:Real}, ℓ :: Int)
-    return mod.rbf(x, ℓ) .+ mod.psum( x, ℓ )
+    return mod.rbf(x, ℓ) + mod.psum( x, ℓ )
 end
 
 # scalar input
@@ -560,7 +560,7 @@ function grad( k :: ShiftedKernel, x :: AbstractVector{<:Real} )
 end
 ````
 
-The jacobion of a vector of kernels follows suit:
+The jacobian of a vector of kernels follows suit:
 
 ````@example RadialBasisFunctionModels
 function jacT( K :: AbstractVector{<:ShiftedKernel}, x :: AbstractVector{<:Real})
