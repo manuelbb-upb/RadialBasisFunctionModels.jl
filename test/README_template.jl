@@ -17,8 +17,7 @@
 using RadialBasisFunctionModels
 
 # We also use `Test` to validate the results and `BenchmarkTools` for comparisons. #jl
-using Test #md
-using BenchmarkTools #md
+using Test #jl
 
 # ## Interpolating RBF Model 
 
@@ -48,7 +47,7 @@ Z[1] isa AbstractVector{<:Real} #md
 @test typeof(Z[1]) <: AbstractVector{<:Real} #jl
 @test length(Z[1]) == 1     #jl
 # The results should be close to the data labels `Y`, i.e., `Z[1] ≈ Y[1]` etc. 
-@test all( isapprox(Z[i][1], Y[i]; atol = 1e-10) for i = 1 : length(Z) ) #jl 
+@test all( isapprox(Z[i][1], Y[i]; atol = 1e-10) for i = 1 : length(Z) ) #jl
 
 # `X` contains Floats, but we can pass them to `rbf`.
 # Usually you have feature vectors and they are always supported:
@@ -57,37 +56,28 @@ Z[1] isa AbstractVector{<:Real} #md
 # For 1 dimensional labels we can actually disable the vector output:
 rbf_scalar = RBFInterpolationModel( X, Y, φ, 1; vector_output = false)
 Z_scalar = rbf_scalar.( X )
-typeof(Z_scalar[1])
-@test Z_scalar isa Vector{Float64}  #jl
-@test all( Z_scalar[i] == Z[i][1] for i = 1 : length(Z) ) #jl
+
+@test( #jl
+Z_scalar isa Vector{Float64}  
+)#jl
+@test( #jl 
+all( Z_scalar[i] == Z[i][1] for i = 1 : length(Z) ) 
+) #jl
 
 # Also, the internal use of `StaticArrays` can be disabled:
 rbf_vec = RBFInterpolationModel( X, Y, φ, 1; static_arrays = false)
-@test Z_vec isa Vector{Vector{Float64}} #jl
 
 # The return type of the evaluation function should be independent of that setting.
 # It rather depends on the input type.
-Xstatic = SVector{1}(X[1])
-typeof(rbf_vec(Xstatic)) #md
-@test rbf_vec(Xstatic) isa SVector  #jl
+Xstatic = RadialBasisFunctionModels.SVector{1}(X[1])
+@test( #jl
+rbf_vec(Xstatic) isa RadialBasisFunctionModels.SVector && rbf_vec(X[1]) isa Vector
+) #jl
 
 # The data precision of the training data is preserved when evaluating.
 X_f0 = Float32.(X)
 Y_f0 = f.(X_f0)
 rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 1; static_arrays = false ) 
-@test rbf_f0.(X_f0) isa Vector{Vector{Float32}} #jl
-
-# Benchmarks for the small 1in1out data set. Construction:
-creation_times = [ #md
-    median(@benchmark( RBFInterpolationModel( X, Y, φ, 1))), #md
-    median(@benchmark( RBFInterpolationModel( X, Y, φ, 1; vector_output = false))), #md
-    median(@benchmark( RBFInterpolationModel( X, Y, φ, 1; static_arrays = false))), #md
-    median(@benchmark( RBFInterpolationModel( X_f0, Y_f0, φ, 1))) #md
-] #md
-# Evaluation:
-eval_times = [ #md
-    median( @benchmark( rbf.(X) ) ), #md
-    median( @benchmark( rbf_scalar.(X) ) ), #md
-    median( @benchmark( rbf_vec.(X) ) ), #md
-    median( @benchmark( rbf_f0.(X_f0) ) ) #md
-] #md
+@test( #jl
+rbf_f0.(X_f0) isa Vector{Vector{Float32}} 
+)#jl
