@@ -2,7 +2,11 @@
 using Pkg
 current_env = Base.load_path()[1]
 Pkg.activate(joinpath(@__DIR__))
-using Literate 
+using Literate
+
+# TODO 
+# re-insert autodocs block when https://github.com/JuliaDocs/Documenter.jl/issues/1192
+# is fixed
 
 #%% Replace include calls 
 # Taken from Liteare.jl docs 
