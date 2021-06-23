@@ -1,5 +1,7 @@
 module RadialBasisFunctionModels #src
 
+using StaticPolynomials: include
+using Base: NamedTuple
 export RBFModel, RBFInterpolationModel #src
 export Multiquadric, InverseMultiquadric, Gaussian, Cubic, ThinPlateSpline #src
 
@@ -240,6 +242,7 @@ end
 include("derivatives.jl")
 include("constructors.jl")
 
+include("mlj_interface.jl")
 # [^wild_diss]: “Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.
 # [^wendland]: “Scattered Data Approximation”, Wendland
 # [^adv_eco]: “Advanced Econometrics“, Takeshi Amemiya

@@ -1,5 +1,8 @@
-# # Some Radial Functions 
+# # Some Radial Functions
 
+using Parameters: @with_kw
+
+#%%
 # The **Gaussian** is defined by ``φ(ρ) = \exp \left( - (αρ)^2 \right)``, where 
 # ``α`` is a shape parameter to fine-tune the function.
 
@@ -11,13 +14,9 @@ A `RadialFunction` with
     φ(ρ) = \\exp( - (α ρ)^2 ).
 ```
 """
-struct Gaussian{R<:Real} <: RadialFunction 
-    α :: R
-
-    function Gaussian( α :: R = 1 ) where R<:Real
-        @assert α > 0 "The shape parameter `α` must be positive."
-        return new{R}(α)
-    end
+@with_kw struct Gaussian{R<:Real} <: RadialFunction 
+    α :: R = 1
+    @assert α > 0 "The shape parameter `α` must be positive."
 end
 
 function ( φ :: Gaussian )( ρ :: Real )
@@ -38,16 +37,13 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{ \\lceil β \\rceil } ( 1 + (αρ)^2 )^β
 ```
 """
-struct Multiquadric{R<:Real,S<:Real} <: RadialFunction
-    α :: R   # shape parameter 
-    β :: S   # exponent 
+@with_kw struct Multiquadric{R<:Real,S<:Real} <: RadialFunction
+    α :: R  = 1     # shape parameter 
+    β :: S  = 1//2  # exponent 
 
-    function Multiquadric(α :: R = 1, β :: S = 1//2 ) where {R<:Real, S<:Real}
-        @assert α > 0 "The shape parameter `α` must be positive."
-        @assert β % 1 != 0 "The exponent must not be an integer."
-        @assert β > 0 "The exponent must be positive."
-        new{R,S}(α,β)
-    end
+    @assert α > 0 "The shape parameter `α` must be positive."
+    @assert β % 1 != 0 "The exponent must not be an integer."
+    @assert β > 0 "The exponent must be positive."
 end
 
 function ( φ :: Multiquadric )( ρ :: Real )
@@ -66,15 +62,12 @@ A `RadialFunction` with
     φ(ρ) = ( 1 + (αρ)^2 )^{-β}
 ```
 """
-struct InverseMultiquadric{R<:Real,S<:Real} <: RadialFunction
-    α :: R 
-    β :: S 
+@with_kw struct InverseMultiquadric{R<:Real,S<:Real} <: RadialFunction
+    α :: R  = 1
+    β :: S  = 1//2
 
-    function InverseMultiquadric( α :: Real = 1, β :: Real = 1//2 ) where {R<:Real, S<:Real}
-        @assert α > 0 "The shape parameter `α` must be positive."
-        @assert β > 0 "The exponent must be positive."
-        new{R,S}(α, β)
-    end
+    @assert α > 0 "The shape parameter `α` must be positive."
+    @assert β > 0 "The exponent must be positive."
 end
 
 function ( φ :: InverseMultiquadric )( ρ :: Real )
@@ -94,14 +87,11 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{ \\lceil β \\rceil /2 } ρ^β
 ```
 """
-struct Cubic{R<:Real} <: RadialFunction 
-    β :: R
+@with_kw struct Cubic{R<:Real} <: RadialFunction 
+    β :: R = 3
 
-    function Cubic( β :: R = 3 ) where R<:Real
-        @assert β > 0 "The exponent `β` must be positive."
-        @assert β % 2 != 0 "The exponent `β` must not be an even number."
-        new{R}(β)
-    end
+    @assert β > 0 "The exponent `β` must be positive."
+    @assert β % 2 != 0 "The exponent `β` must not be an even number."
 end 
 
 function ( φ :: Cubic )( ρ :: Real )
@@ -123,13 +113,10 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{k+1} ρ^{2k} \\log(ρ)
 ```
 """
-struct ThinPlateSpline <: RadialFunction
-    k :: Int 
+@with_kw struct ThinPlateSpline <: RadialFunction
+    k :: Int = 2
 
-    ThinPlateSpline( k :: Real = 2 ) = begin 
-        @assert k > 0 && k % 1 == 0 "The parameter `k` must be a positive integer."
-        new( Int(k) )
-    end
+    @assert k > 0 && k % 1 == 0 "The parameter `k` must be a positive integer."
 end
 
 function (φ :: ThinPlateSpline )( ρ :: Real )

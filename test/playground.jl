@@ -7,9 +7,7 @@ f = x -> [ 1 + x[1]; sum(x.^2) ]
 X = [ -3 .+ 6 * rand(2) for i = 1 : 5]
 Y = f.(X)
 
-C = [ X[1], ]
-I = [4,]
-
+#%%
 # Initialize the `RadialFunction` to use for the RBF model:
 φ = Gaussian()
 

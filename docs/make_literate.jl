@@ -31,6 +31,7 @@ Literate.markdown(
     joinpath( @__DIR__, "..", "src", "RadialBasisFunctionModels.jl"), 
     joinpath( @__DIR__, "src" );    
     documenter = true,
+    execute = false,
     codefence = "````@example RadialBasisFunctionModels" => "````",
     preprocess = replace_includes
     )

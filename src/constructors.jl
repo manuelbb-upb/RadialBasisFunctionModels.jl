@@ -474,7 +474,7 @@ const SymbolToRadialConstructor = NamedTuple((
     :thin_plate_spline => ThinPlateSpline
 ))
 
-function _get_constructor( φ_symb :: Union{Symbol, String}, φ_args :: Union{Nothing, Tuple} )
+function _get_rad_func( φ_symb :: Union{Symbol, String}, φ_args :: Union{Nothing, Tuple} )
 
     ## which radial function to use?
     radial_symb = Symbol( lowercase( string( φ_symb ) ) )
@@ -503,7 +503,7 @@ for op ∈ [ :RBFInterpolationModel, :RBFModel ]
                 poly_deg :: Int = 1; kwargs...
             )
 
-            φ = _get_constructor( φ_symb, φ_args )
+            φ = _get_rad_func( φ_symb, φ_args )
             return $op(features, labels, φ, poly_deg; kwargs... )
         end
     end
