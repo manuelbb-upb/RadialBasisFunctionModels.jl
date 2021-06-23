@@ -1,9 +1,11 @@
 module RadialBasisFunctionModels #src
 
-using StaticPolynomials: include
-using Base: NamedTuple
+using Base: NamedTuple, promote_eltype, AbstractFloat
 export RBFModel, RBFInterpolationModel #src
 export Multiquadric, InverseMultiquadric, Gaussian, Cubic, ThinPlateSpline #src
+
+export RBFInterpolator
+export RBFMachine, fit!, add_data!
 
 export auto_grad, auto_jac, grad, jac, eval_and_auto_grad
 export eval_and_auto_jac, eval_and_grad, eval_and_jac

@@ -81,7 +81,7 @@ end
 Return the canonical basis of the space of `n`-variate 
 polynomials of degree at most `d`.
 """
-Zyg.@nograd function canonical_basis( n :: Int, d :: Int, OneType :: Type = Float64 )
+function canonical_basis( n :: Int, d :: Int, OneType :: Type = Float64 )
     _canonical_basis(n,d, OneType)
 end
 
@@ -159,20 +159,19 @@ function coefficients(
 
     n_out = length(values[1])
     
-    ## Φ-matrix, N_d × N_c, formerly
-    ## Zygote-compatible:
     N_c = length(kernels);
     N_d = length(sites);
+    Q = length(polys)
 
     if N_d < N_c 
         error("underdetermined models not supported yet")
     end
-   
-    Φ = hcat( collect(map(k,sites) for k ∈ kernels )... )
+    if N_d < Q 
+        error("Too few data sites for selectod polynomial degree. (Need at least $(Q).)")
+    end
 
-    ## P-matrix, N_d × Q columns
-    Q = length(polys)
-    P = transpose( hcat( collect( map(polys, sites) )... ) )
+    Φ = hcat( collect(map(k,sites) for k ∈ kernels )... )       # N_d × N_c
+    P = transpose( hcat( collect( map(polys, sites) )... ) )    # N_d × Q
 
     ## system matrix S and right hand side
     S = [Φ P]
@@ -412,8 +411,9 @@ function RBFModel(
     kernels = make_kernels(φ, c̃enters)  
     
     poly_precision = promote_type(Float16, inner_type(sites))
-    poly_deg = max( poly_deg, cpd_order(φ) - 1 , -1 )
-    poly_basis_sys = canonical_basis( num_vars, poly_deg, poly_precision )
+    poly_basis_sys = Zyg.ignore() do 
+        canonical_basis( num_vars, poly_deg, poly_precision )
+    end
 
     w, λ, S, RHS = coefficients( sites, values, kernels, poly_basis_sys )
 
@@ -459,6 +459,12 @@ function RBFInterpolationModel(
         static_arrays :: Bool = true
     )
     @assert length(features) == length(labels) "Provide as many features as labels!"
+    
+    if poly_deg < cpd_order(φ) - 1
+        @warn "Polyonmial degree too small for interpolation. Using $(cpd_order(φ)-1)." 
+        poly_deg = max( poly_deg,  cpd_order(φ) - 1 )
+    end
+
     mod = RBFModel(features, labels, φ, poly_deg; vector_output, static_arrays)
     return RBFInterpolationModel( mod )
 end
@@ -474,7 +480,7 @@ const SymbolToRadialConstructor = NamedTuple((
     :thin_plate_spline => ThinPlateSpline
 ))
 
-function _get_rad_func( φ_symb :: Union{Symbol, String}, φ_args :: Union{Nothing, Tuple} )
+function _get_rad_func( φ_symb :: Union{Symbol, String}, φ_args )
 
     ## which radial function to use?
     radial_symb = Symbol( lowercase( string( φ_symb ) ) )
@@ -499,7 +505,7 @@ for op ∈ [ :RBFInterpolationModel, :RBFModel ]
                 features :: AbstractVector{ <:NumberOrVector },
                 labels :: AbstractVector{ <:NumberOrVector },
                 φ_symb :: Union{Symbol, String},
-                φ_args :: Union{Nothing, Tuple} = nothing,
+                φ_args = nothing,
                 poly_deg :: Int = 1; kwargs...
             )
 
@@ -507,4 +513,85 @@ for op ∈ [ :RBFInterpolationModel, :RBFModel ]
             return $op(features, labels, φ, poly_deg; kwargs... )
         end
     end
+end
+
+@with_kw mutable struct RBFMachine{
+        FT <: AbstractVector{<:AbstractVector{<:AbstractFloat}},
+        LT <: AbstractVector{<:AbstractVector{<:AbstractFloat}},
+    }
+    features :: FT = Vector{Float64}[]
+    labels :: LT = Vector{Float64}[]
+    kernel_name :: Symbol = :gaussian 
+    kernel_args :: Union{Nothing, Vector{Float64}} = nothing 
+    poly_deg :: Int = 1
+
+    model :: Union{Nothing,RBFModel} = nothing
+    valid :: Bool = false
+
+    @assert poly_deg >= cpd_order(SymbolToRadialConstructor[kernel_name]()) - 1 "Polynomial degree too low for interpolation."
+end
+
+_precision( :: RBFMachine{FT,LT} ) where {FT,LT} = eltype( Base.promote_eltype(FT, LT) )
+function _kernel_args( mach :: RBFMachine ) 
+    if isnothing( mach.kernel_args )
+        return mach.kernel_args
+    else
+        T = promote_type( Float16, _precision(mach) )
+        return T.(mach.kernel_args)
+    end
+end
+
+function fit!( mach :: RBFMachine )::Nothing
+    @assert length(mach.features) > 0 "Provide at least one data sample."
+    num_needed =  binomial( mach.poly_deg + length(mach.features[1]), mach.poly_deg) 
+    @assert length(mach.features) >= num_needed "Too few data sites for selected polynomial degree (need $(num_needed))."
+
+    inner_model = RBFModel( 
+        mach.features, 
+        mach.labels, 
+        mach.kernel_name, 
+        _kernel_args(mach),
+        mach.poly_deg 
+    )
+    mach.model = inner_model
+    mach.valid = true
+    return nothing
+end
+
+( mach :: RBFMachine )(args...) = mach.model(args...)
+@forward RBFMachine.model grad, jac, jacT, auto_grad, auto_jac
+
+Base.broadcastable( m::Union{RBFModel, RBFInterpolationModel, RBFMachine} ) = Ref(m)
+
+"Add a feature vector(s) and a label(s) to the `machine` container."
+function add_data!( 
+        m :: RBFMachine, features :: AbstractVector{<:AbstractVector}, labels :: AbstractVector{<:AbstractVector}
+    ) :: Nothing
+    @assert length(features) == length(labels) "Provide same number of features and labels."
+    @assert all( length(f) == length(features[1]) for f in features ) "Features must have same length."
+    @assert all( length(l) == length(labels[1]) for l in labels ) "Labels must have same length"
+    @assert isempty(m.features) || length(m.features[1]) == length(features[1]) && length(m.labels[1]) == length(labels[1]) "Length doesnt match previous data."
+    append!(m.features, features)
+    append!(m.labels, labels)
+    m.valid = false
+    return nothing
+end
+
+function add_data!(
+        m :: RBFMachine, feature :: AbstractVector{<:AbstractFloat}, label:: AbstractVector{<:AbstractFloat}
+    ) :: Nothing 
+    return add_data!(m, [ feature, ], [label, ])
+end
+
+
+function Base.empty!( m :: RBFMachine ) :: Nothing
+    empty!(m.features)
+    empty!(m.labels)
+    m.model = nothing
+    m.valid = false 
+    return nothing
+end
+
+function Base.isempty(m :: RBFMachine ) :: Bool 
+    isempty( m.features ) && isempty( m.labels ) && isnothing(m.model)
 end
