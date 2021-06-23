@@ -77,7 +77,7 @@ norm2( vec ) = norm(vec, 2)
 
 "Evaluate kernel `k` at `x - k.c`."
 function (k::ShiftedKernel)( x :: AbstractVector{<:Real} )
-    return k.φ( norm2( x - k.c ) )
+    return k.φ( norm2( x .- k.c ) )
 end
 
 # A vector of ``N`` kernels is a mapping ``ℝ^n → ℝ^N, \ x ↦ [ k₁(x), …, k_N(x)] ``.
@@ -215,7 +215,7 @@ end
 # Evaluation is easy. We accept an additional `::Nothing` argument that does nothing 
 # for now, but saves some typing later.
 function vec_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing)
-    return mod.rbf(x) + mod.psum( x )
+    return mod.rbf(x) .+ mod.psum( x )
 end
 
 function scalar_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing )
