@@ -86,4 +86,49 @@ end
 end
 
 #%%
+@testset "Kernels" begin
+	features = [ rand(2) for i = 1 : 4 ]
+	labels = [ rand(3) for i = 1 : 4 ]
+	for kn in keys(RadialBasisFunctionModels.SymbolToRadialConstructor)
+		if kn != :thin_plate_spline # default thin plate spline has cpd order = 3 => needs quadratic polynomial
+			mach = RBFMachine(; 
+				kernel_name = kn,
+				poly_deg = 1,
+				features, labels 
+			)
+			@test isnothing(fit!(mach))
+			@test mach.valid 
+			@test all( mach(features[i]) ≈ labels[i] for i = 1 : 4 )
+		else
+			@test_throws AssertionError RBFMachine(; 
+				kernel_name = kn,
+				poly_deg = 1,
+				features, labels 
+			)
+
+			mach = RBFMachine(; 
+				kernel_name = kn,
+				kernel_args = [1,],
+				poly_deg = 1,
+				features, labels 
+			)
+			@test isnothing(fit!(mach))
+			@test mach.valid 
+			@test all( mach(features[i]) ≈ labels[i] for i = 1 : 4 )
+		end 
+	end
+
+	# Multiquadric has cpd order 1 => needs constant polynomial
+	@test_throws AssertionError RBFMachine( kernel_name = :multiquadric, poly_deg = -1 )
+	
+	# Cubic has order 2
+	@test_throws AssertionError RBFMachine( kernel_name = :cubic, poly_deg = -1 )
+	@test_throws AssertionError RBFMachine( kernel_name = :cubic, poly_deg = 0 )
+
+	for kernel_name in [:gaussian, :inv_multiquadric], poly_deg in [-1,0,1]
+		@test RBFMachine(;kernel_name, poly_deg) isa RBFMachine
+	end
+end
+
+#%%
 Pkg.activate(current_env)

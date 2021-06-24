@@ -37,7 +37,7 @@ function non_negative_solutions( d :: Int, n :: Int )
         j = 1
         for i = 0 : d
             ## find all solutions of length `n-1` that sum to `i` 
-            ## if add `d-i` to each column, then each column 
+            ## if we add `d-i` to each column, then each column 
             ## has `n` elements and sums to `d`
             padded_shorter_solutions = vcat( d-i, non_negative_solutions(i, n-1) )
             num_shorter_sols = size( padded_shorter_solutions, 2 )
@@ -48,32 +48,32 @@ function non_negative_solutions( d :: Int, n :: Int )
     end
 end
 
+# The polyonmial basis exponents are then given by all possible 
+# ``\bar{d}\le d``:
+@doc """
+    non_negative_solutions_ineq( d :: Int, n :: Int)
+
+Return a matrix with columns that correspond to solution vectors 
+``[x_1, …, x_n]`` to the equation ``x_1 + … + x_n <= d``,
+where the variables are non-negative integers.
+"""
 function non_negative_solutions_ineq( d :: Int, n :: Int )
     return hcat( (non_negative_solutions( d̄, n ) for d̄=0:d )... )
 end
 
 # !!! note 
 #     I did an unnecessary rewrite of `non_negative_solutions` to be 
-#     Zygote-compatible. Therefore the buffers...
+#     Zygote-compatible. Therefore the matrices etc.
 #    `Combinatorics` has `multiexponents` which should do the same...
 
 # We **don't** use `DynamicPolynomials.jl` to generate the Polyomials **anymore**.
 # Zygote did overflow when there were calculations with those polynomials.
-# Not a problem for calculating the basis (because of `@nograd`),
+# Not a problem for calculating the basis (because of we are `ignore()`ing 
+# the basis calculation now, assuming we never want to differentiate 
+# with respect to `n,d`),
 # but when constructing the outputs from them.
 # Instead we directly construct `StaticPolynomial`s and define a 
 # `PolynomialSystem` that evaluates all basis polynomials.
-
-@memoize ThreadSafeDict function _canonical_basis(n :: Int, d::Int, OneType :: Type = Float64)
-    if d < 0
-        return EmptyPolySystem{n}()
-    else
-        exponent_matrix = non_negative_solutions_ineq( d, n )
-        one16 = OneType(1)
-        return PolynomialSystem(
-             ( Polynomial( [one16,], e[:,:] ) for e ∈ eachcol(exponent_matrix) )... )
-    end
-end
 
 @doc """
     canonical_basis( n:: Int, d :: Int ) :: Union{PolynomialSystem, EmptyPolySystem}
@@ -81,8 +81,16 @@ end
 Return the canonical basis of the space of `n`-variate 
 polynomials of degree at most `d`.
 """
-function canonical_basis( n :: Int, d :: Int, OneType :: Type = Float64 )
-    _canonical_basis(n,d, OneType)
+@memoize ThreadSafeDict function canonical_basis(n :: Int, d::Int, OneType :: Type = Float64)
+    if d < 0
+        return EmptyPolySystem{n}()
+    else
+        exponent_matrix = non_negative_solutions_ineq( d, n )
+        one_float = OneType(1)  # `one_float` is used as coefficient(s) to guarantee floating point output
+        return PolynomialSystem(
+             ( Polynomial( [one_float,], e[:,:] ) for e ∈ eachcol(exponent_matrix) )... 
+        )
+    end
 end
 
 # ### Solving the Equation System 
@@ -151,10 +159,7 @@ The arguments are
 * a `PolynomialSystem` or `EmptyPolySystem` (in case of deg = -1).
 """
 function coefficients( 
-        sites :: ST, 
-        values :: VT, 
-        kernels :: AbstractVector{<:ShiftedKernel},
-        polys :: Union{PolynomialSystem,EmptyPolySystem} #Vector{<:DP.Polynomial};
+        sites, values, kernels,  polys
     ) where {ST <: AbstractVector, VT <: AbstractVector }
 
     n_out = length(values[1])
@@ -164,30 +169,36 @@ function coefficients(
     Q = length(polys)
 
     if N_d < N_c 
-        error("underdetermined models not supported yet")
+        error("Underdetermined models not supported yet.")
     end
     if N_d < Q 
         error("Too few data sites for selectod polynomial degree. (Need at least $(Q).)")
     end
 
-    Φ = hcat( collect(map(k,sites) for k ∈ kernels )... )       # N_d × N_c
-    P = transpose( hcat( collect( map(polys, sites) )... ) )    # N_d × Q
-
+    Φ = transpose( hcat( map(kernels, sites)... ) )   # N_d × N_c
+    P = transpose( hcat( map(polys, sites)... ) )    # N_d × Q
     ## system matrix S and right hand side
     S = [Φ P]
     RHS = transpose( hcat(values... ) );
 
-    if N_d == N_c   # Interpolation
+    #=if N_d == N_c   # Interpolation
         Z = ST <: StaticArray ? @SMatrix(zeros(Int, Q, Q )) : zeros(Int, Q, Q)
         padding = VT <: StaticArray ? @SMatrix(zeros(Int, Q, n_out)) : zeros(Int, Q, n_out)
         S = vcat( S, [P' Z])
         RHS = vcat( RHS, padding )
     end
+    =#
+
     ## solve system
     coeff = S \ RHS 
-
+    
     ## return w and λ
-    return coeff[1 : N_c, :], coeff[N_c+1 : end, :], S, RHS
+    if coeff isa StaticArray
+        print("static")
+        return coeff[ SVector{N_c}(1:N_c), : ], coeff[ SVector{Q}(N_c+1 : N_c + Q), :], S, RHS
+    else
+        return view(coeff, 1 : N_c, :), view(coeff, N_c + 1 : N_c + Q, :), S, RHS
+    end
 end
 
 # We can easily impose linear equality constraints,
@@ -285,18 +296,13 @@ end
     
 # ### The Actual, Usable Constructor 
 
-# We want the user to be able to pass 1D data as scalars and use the following helpers:
-function ensure_vec_of_vecs( before :: AbstractVector{<:AbstractVector} )
-   return before 
-end
+# We want the user to be able to pass 1D data as scalars and use the following helpers: 
 
-Base.vec( x :: T ) where T<:Real = SVector{1,T}(x)
-function ensure_vec_of_vecs( before :: AbstractVector{ <:Real } )
-    return( [vec(x) for x ∈ before ] )
-end
+ensure_vec_of_vecs( before :: AbstractVector{<:AbstractVector{<:Real}} ) = before
+ensure_vec_of_vecs( before :: AbstractVector{ <:Real }) = [[x,] for x in before ]
 
 function inner_type( vec_of_vecs :: AbstractVector{<:AbstractVector{T}}) where T
-    if Base.isabstracttype(T)
+    if Base.isabstracttype(T)   # like Any if data is of mixed precision
         return Float64 
     else
         return T
@@ -312,48 +318,6 @@ end
 "Return array of `ShiftedKernel`s based function `φ` with centers from `centers`."
 function make_kernels( φ :: RadialFunction, centers :: VecOfVecs )
     [ ShiftedKernel(φ, c) for c ∈ centers ]
-end
-
-# We use these methods to construct the RBFSum of a model.
-# Note, the name is `get_RBFSum` to not run into infinite recursion with 
-# the default constructor.
-# For small dimensions, we want to use an SMatrix, with the idea being to save 
-# time in successive evaluations, even if the construction takes a bit longer.
-function get_RBFSum( kernels :: AbstractVector{<:ShiftedKernel}, weights :: AbstractMatrix{<:Real};
-        static_arrays :: Bool = true 
-    ) 
-    num_outputs, num_centers = size(weights)
-
-    ## Sized Matrix?
-    make_static = !isa(weights, StaticArray) && num_centers * num_outputs < 100
-    wmat = begin 
-        if static_arrays && make_static
-            SMatrix{num_outputs, num_centers}(weights)
-        else
-            weights
-        end
-    end
-
-    RBFSum( kernels, wmat, num_outputs )
-end
-
-# Use a similar constuctor for the polynomial sum: 
-function get_PolySum( polys :: Union{EmptyPolySystem, PolynomialSystem}, weights :: AbstractMatrix{<:Real};
-        static_arrays :: Bool = true 
-    ) 
-    num_outputs, num_regressors = size(weights)
-
-    ## Sized Matrix?
-    make_static = !isa(weights, StaticArray) && num_regressors * num_outputs < 100
-    wmat = begin 
-        if static_arrays && make_static
-            SMatrix{num_outputs, num_regressors}(weights)
-        else
-            weights
-        end
-    end
-
-    PolySum( polys, wmat )
 end
 
 # We now have all ingredients for the basic outer constructor:
@@ -383,7 +347,6 @@ function RBFModel(
         centers :: AbstractVector{ <:NumberOrVector } = Vector{Float16}[],
         interpolation_indices :: AbstractVector{ <: Int } = Int[],
         vector_output :: Bool = true,
-        static_arrays :: Bool = true
     )
 
     ## Basic Data integrity checks
@@ -394,21 +357,21 @@ function RBFModel(
     @assert all( length(s) == num_vars for s ∈ features ) "All features must have same dimension."
     @assert all( length(v) == num_outputs for v ∈ labels ) "All labels must have same dimension."
     
-    if !isempty(centers)
-        C = centers 
-        @assert all( length(s) == num_vars for s ∈ centers ) "All centers must have dimension $(num_vars)."
-    else
-        C = copy(features)
-    end
-    num_centers = length(C)
-    
+    num_sites = length(features)
+    num_vals = length(labels)
+    @assert num_sites == num_vals "Provide as many features as labels."
+
     sites = ensure_vec_of_vecs(features)
     values = ensure_vec_of_vecs(labels)
-    c̃enters = ensure_vec_of_vecs(C)
-
-    ## TODO benchmark whether array format makes some difference?
-    ## centers <: SVector{<:SVector} or Vector{<:SVector} or Vector{<:Vector} makes a difference
-    kernels = make_kernels(φ, c̃enters)  
+    if !isempty(centers)
+        @assert all( length(c) == num_vars for c ∈ centers ) "All centers must have dimension $(num_vars)."
+        C = ensure_vec_of_vecs(centers)
+    else
+        C = copy(sites)
+    end
+    num_centers = length(C)
+ 
+    kernels = make_kernels(φ, C)  
     
     poly_precision = promote_type(Float16, inner_type(sites))
     poly_basis_sys = Zyg.ignore() do 
@@ -420,11 +383,12 @@ function RBFModel(
     if !isempty(interpolation_indices)
         w, λ = constrained_coefficients( w, λ, S, RHS, interpolation_indices)
     end
+    
     ## build output polynomials
-    poly_sum = get_PolySum( poly_basis_sys, transpose(λ) )
+    poly_sum = PolySum( poly_basis_sys, transpose(λ) )
 
     ## build RBF system 
-    rbf_sys = get_RBFSum(kernels, transpose(w); static_arrays)
+    rbf_sys = RBFSum(kernels, transpose(w), num_outputs)
   
     ## vector output? (dismiss user choice if labels are vectors)
     vec_output = num_outputs == 1 ? vector_output : true
@@ -434,7 +398,7 @@ function RBFModel(
     )
 end
 
-### Special Constructors
+# ### Special Constructors
 
 # We offer some specialized models (that simply wrap the main type).
 struct RBFInterpolationModel
@@ -456,7 +420,6 @@ function RBFInterpolationModel(
         φ :: Union{RadialFunction,AbstractVector{<:RadialFunction}} = Multiquadric(),
         poly_deg :: Int = 1;
         vector_output :: Bool = true,
-        static_arrays :: Bool = true
     )
     @assert length(features) == length(labels) "Provide as many features as labels!"
     
@@ -465,7 +428,7 @@ function RBFInterpolationModel(
         poly_deg = max( poly_deg,  cpd_order(φ) - 1 )
     end
 
-    mod = RBFModel(features, labels, φ, poly_deg; vector_output, static_arrays)
+    mod = RBFModel(features, labels, φ, poly_deg; vector_output)
     return RBFInterpolationModel( mod )
 end
 
@@ -480,6 +443,7 @@ const SymbolToRadialConstructor = NamedTuple((
     :thin_plate_spline => ThinPlateSpline
 ))
 
+"Obtain a `RadialFunction` from its name and constructor arguments."
 function _get_rad_func( φ_symb :: Union{Symbol, String}, φ_args )
 
     ## which radial function to use?
@@ -490,15 +454,16 @@ function _get_rad_func( φ_symb :: Union{Symbol, String}, φ_args )
     end
     
     constructor = SymbolToRadialConstructor[radial_symb]
-    if φ_args isa Tuple 
-        φ = constructor( φ_args... )
-    else
+    if isnothing(φ_args)
         φ = constructor()
+    else
+        φ = constructor( φ_args... )
     end
 
     return φ
 end
 
+# The alternative constructors are build programmatically:
 for op ∈ [ :RBFInterpolationModel, :RBFModel ]
     @eval begin
         function $op( 
@@ -515,6 +480,26 @@ for op ∈ [ :RBFInterpolationModel, :RBFModel ]
     end
 end
 
+
+# ### Container with Training Data
+
+# The RBF Machine is similar in design to what an MLJ machine does:
+# Training data (feature and label **vectors**) are stored and can be added.
+# The inner model is trained with `fit!`.
+
+# **TODO** In the future, we can customize the `fit!` method when updating a model 
+# to only consider *new* training data. 
+# This also makes type conversion of the whole data arrays unnecessary.
+
+"""
+    RBFMachine(; features = Vector{Float64}[], labels = Vector{Float64}[], 
+    kernel_name = :gaussian, kernel_args = nothing, poly_deg = 1)
+
+A container holding an inner `model :: RBFModel` (or `model == nothing`).
+An array of arrays of features is stored in the `features` field.
+Likewise for `labels`. 
+The model is trained with `fit!` and can then be evaluated.
+"""
 @with_kw mutable struct RBFMachine{
         FT <: AbstractVector{<:AbstractVector{<:AbstractFloat}},
         LT <: AbstractVector{<:AbstractVector{<:AbstractFloat}},
@@ -526,12 +511,19 @@ end
     poly_deg :: Int = 1
 
     model :: Union{Nothing,RBFModel} = nothing
-    valid :: Bool = false
+    valid :: Bool = false   # is model trained on all data sites?
 
-    @assert poly_deg >= cpd_order(SymbolToRadialConstructor[kernel_name]()) - 1 "Polynomial degree too low for interpolation."
+    @assert let T = eltype( Base.promote_eltype(FT, LT) ),
+        K = isnothing(kernel_args) ? nothing : T.(kernel_args),
+        φ = _get_rad_func( kernel_name, K );
+        poly_deg >= cpd_order(φ) - 1 
+    end "Polynomial degree too low for interpolation."
 end
 
+"Return floating point type of training data elements."
 _precision( :: RBFMachine{FT,LT} ) where {FT,LT} = eltype( Base.promote_eltype(FT, LT) )
+
+"Return kernel arguments converted to minimum required precision."
 function _kernel_args( mach :: RBFMachine ) 
     if isnothing( mach.kernel_args )
         return mach.kernel_args
@@ -541,6 +533,7 @@ function _kernel_args( mach :: RBFMachine )
     end
 end
 
+"Fit `mach :: RBFMachine` to the training data."
 function fit!( mach :: RBFMachine )::Nothing
     @assert length(mach.features) > 0 "Provide at least one data sample."
     num_needed =  binomial( mach.poly_deg + length(mach.features[1]), mach.poly_deg) 
@@ -558,11 +551,11 @@ function fit!( mach :: RBFMachine )::Nothing
     return nothing
 end
 
+# Forward evaluation methods of inner model:
 ( mach :: RBFMachine )(args...) = mach.model(args...)
 @forward RBFMachine.model grad, jac, jacT, auto_grad, auto_jac
 
-Base.broadcastable( m::Union{RBFModel, RBFInterpolationModel, RBFMachine} ) = Ref(m)
-
+# Methods to add features and labels:
 "Add a feature vector(s) and a label(s) to the `machine` container."
 function add_data!( 
         m :: RBFMachine, features :: AbstractVector{<:AbstractVector}, labels :: AbstractVector{<:AbstractVector}
@@ -583,6 +576,7 @@ function add_data!(
     return add_data!(m, [ feature, ], [label, ])
 end
 
+# Convenience methods to "reset" a machine:
 
 function Base.empty!( m :: RBFMachine ) :: Nothing
     empty!(m.features)

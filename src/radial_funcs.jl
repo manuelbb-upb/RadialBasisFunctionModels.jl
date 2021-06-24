@@ -87,8 +87,8 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{ \\lceil β \\rceil /2 } ρ^β
 ```
 """
-@with_kw struct Cubic{R<:Real} <: RadialFunction 
-    β :: R = 3
+@with_kw struct Cubic <: RadialFunction 
+    β :: Int = 3
 
     @assert β > 0 "The exponent `β` must be positive."
     @assert β % 2 != 0 "The exponent `β` must not be an even number."
@@ -119,8 +119,8 @@ A `RadialFunction` with
     @assert k > 0 && k % 1 == 0 "The parameter `k` must be a positive integer."
 end
 
-function (φ :: ThinPlateSpline )( ρ :: Real )
-    (-1)^(k+1) * ρ^(2*k) * log( ρ )
+function (φ :: ThinPlateSpline )( ρ :: T ) where T<:Real
+    ρ == 0 ? zero(T) : (-1)^(φ.k+1) * ρ^(2*φ.k) * log( ρ )
 end
 
 cpd_order( φ :: ThinPlateSpline ) = φ.k + 1
@@ -128,4 +128,4 @@ df(φ :: ThinPlateSpline, ρ :: Real ) = ρ == 0 ? 0 : (-1)^(φ.k+1) * ρ^(2*φ.
 
 # !!! note 
 #     The thin plate spline with `k = 1` is not differentiable at `ρ=0` but we define the derivative
-#     as 0, which makes results in a continuous extension.
+#     as 0, which results in a continuous extension.

@@ -18,6 +18,13 @@ using StaticArrays
 using LinearAlgebra: norm
 using Lazy: @forward
 
+
+# We define evaluation functions, so that the right type is returned by `polys`.
+for V in [:SizedVector, :MVector ]
+    @eval Base.@propagate_inbounds StaticPolynomials.evaluate( F :: PolynomialSystem, x :: $V ) = $V( StaticPolynomials._evaluate( F, x ) ) #src
+    @eval Base.@propagate_inbounds StaticPolynomials.evaluate( F :: PolynomialSystem, x :: $V , p) = $V( StaticPolynomials._evaluate( F, x , p) ) #src
+end
+
 import Zygote as Zyg
 using Zygote: Buffer
 
@@ -83,10 +90,20 @@ function (k::ShiftedKernel)( x :: AbstractVector{<:Real} )
 end
 
 # A vector of ``N`` kernels is a mapping ``ℝ^n → ℝ^N, \ x ↦ [ k₁(x), …, k_N(x)] ``.
+
+_eval_vec_of_kernels( K, x ) = [k(x) for k ∈ K]
+
 "Evaluate ``x ↦ [ k₁(x), …, k_{N_c}(x)]`` at `x`."
-function ( K::AbstractVector{<:ShiftedKernel})( x :: AbstractVector{<:Real} )
-    [ k(x) for k ∈ K ]
+( K::AbstractVector{<:ShiftedKernel})( x ) = _eval_vec_of_kernels( K, x )
+#=
+function ( K::AbstractVector{<:ShiftedKernel{<:RadialFunction, <:SVector}})( x )
+    return SVector{ length(K) }(_eval_vec_of_kernels(K, x) )
 end
+
+function ( K::AbstractVector{<:ShiftedKernel{<:RadialFunction, <:StaticArray}})( x )
+    return SizedVector{ length(K) }(_eval_vec_of_kernels(K, x) )
+end
+=#
 
 # Suppose, we have calculated the distances ``\|x - x^i\|`` beforehand.
 # We can save redundant effort by passing them to the radial functions of the kernels.
@@ -134,14 +151,18 @@ function (rbf :: RBFSum)(x :: VT, ℓ :: Int) where VT <: AbstractVector{<:Real}
 end
 
 # The overall output is a vector, and we also get it via matrix multiplication.
+#=
 # First, define helpers so that the right type is returned:
 ## TODO I am not sure how to handle precision here. #src
 type_guard( T :: Type{<:Vector}, x :: AbstractVector{<:Real}, :: Int ) = convert( T, x )
 type_guard( :: Type{<:SVector}, x :: AbstractVector, n_out :: Int) = SVector{n_out}(x)
 type_guard( :: Type{<:SizedVector}, x :: AbstractVector, n_out :: Int) = SizedVector{n_out}(x)
+=#
 
 ## @doc "Evaluate `rbf::RBFSum` at `x`."
-(rbf :: RBFSum)( x :: VT ) where VT <: AbstractVector{<:Real} = type_guard( VT, rbf.weights*rbf.kernels(x), rbf.num_outputs )
+_eval_rbfsum(rbf::RBFSum, x ) = rbf.weights*rbf.kernels(x)
+(rbf :: RBFSum)( x :: AbstractVector{<:Real} ) = _eval_rbfsum(rbf, x)
+(rbf :: RBFSum)( x :: Vector{<:Real} ) = Vector(_eval_rbfsum(rbf, x))
 
 # As before, we allow to pass precalculated distance vectors:
 function eval_at_dist( rbf::RBFSum, dists :: AbstractVector{<:Real}, ℓ :: Int ) 
@@ -173,8 +194,11 @@ struct PolySum{
     end
 end
 
-(p :: PolySum)(x :: VT) where VT <: AbstractVector{<:Real} = type_guard( VT, p.weights*p.polys(x), p.num_outputs)
-(p :: PolySum)(x :: AbstractVector{<:Real},ℓ::Int) = (p.weights[ℓ,:]'p.polys(x))[end]
+eval_psum( p :: PolySum, x ) = p.weights * p.polys(x)
+(p :: PolySum)(x::AbstractVector{<:Real}) = eval_psum( p, x )
+(p :: PolySum)(x::Vector{<:Real}) = Vector(eval_psum(p,x))
+
+(p :: PolySum)(x,ℓ::Int) = (p.weights[ℓ,:]'p.polys(x))[end]
 
 # We now have all ingredients to define the model type.
 
