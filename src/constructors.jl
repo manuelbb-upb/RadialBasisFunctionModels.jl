@@ -63,8 +63,8 @@ end
 
 # !!! note 
 #     I did an unnecessary rewrite of `non_negative_solutions` to be 
-#     Zygote-compatible. Therefore the matrices etc.
-#    `Combinatorics` has `multiexponents` which should do the same...
+#     Zygote-compatible. Therefore the matrices etc.  
+#     `Combinatorics` has `multiexponents` which should do the same...
 
 # We **don't** use `DynamicPolynomials.jl` to generate the Polyomials **anymore**.
 # Zygote did overflow when there were calculations with those polynomials.
@@ -159,11 +159,9 @@ The arguments are
 * a `PolynomialSystem` or `EmptyPolySystem` (in case of deg = -1).
 """
 function coefficients( 
-        sites, values, kernels,  polys
-    ) where {ST <: AbstractVector, VT <: AbstractVector }
-
-    n_out = length(values[1])
-    
+        sites, values, kernels, polys; mode :: Symbol = :ls
+    )
+   
     N_c = length(kernels);
     N_d = length(sites);
     Q = length(polys)
@@ -176,29 +174,50 @@ function coefficients(
     end
 
     Φ = transpose( hcat( map(kernels, sites)... ) )   # N_d × N_c
-    P = transpose( hcat( map(polys, sites)... ) )    # N_d × Q
+    P = transpose( hcat( map(polys, sites)... ) )       # N_d × Q
     ## system matrix S and right hand side
     S = [Φ P]
     RHS = transpose( hcat(values... ) );
 
-    #=if N_d == N_c   # Interpolation
-        Z = ST <: StaticArray ? @SMatrix(zeros(Int, Q, Q )) : zeros(Int, Q, Q)
-        padding = VT <: StaticArray ? @SMatrix(zeros(Int, Q, n_out)) : zeros(Int, Q, n_out)
-        S = vcat( S, [P' Z])
-        RHS = vcat( RHS, padding )
-    end
-    =#
 
-    ## solve system
-    coeff = S \ RHS 
+    return _coefficients( Φ, P, S, RHS, Val(:ls) )
+end
     
-    ## return w and λ
-    if coeff isa StaticArray
-        print("static")
-        return coeff[ SVector{N_c}(1:N_c), : ], coeff[ SVector{Q}(N_c+1 : N_c + Q), :], S, RHS
-    else
-        return view(coeff, 1 : N_c, :), view(coeff, N_c + 1 : N_c + Q, :), S, RHS
-    end
+function _coeff_matrices(coeff :: AbstractMatrix, S, RHS, N_c, Q )
+    return view(coeff, 1 : N_c, :), view(coeff, N_c + 1 : N_c + Q, :), S, RHS
+end 
+
+function _coeff_matrices(coeff :: StaticMatrix, S, RHS, N_c, Q )
+    return coeff[ SVector{N_c}(1 : N_c), :], coeff[ SVector{Q}( N_c + 1 : N_c + Q ), :], S, RHS
+end
+
+function _coefficients( Φ, P, S, RHS, ::Val{:ls} )
+    N_c = size(Φ,2); Q = size(P,2);
+    coeff = S \ RHS 
+    return _coeff_matrices(coeff, S, RHS, N_c, Q )
+end
+
+function _coefficients( Φ, P, S, RHS, ::Val{:interpolation} )
+    N_d, N_c = size(Φ); Q = size(P,2);
+    @assert N_d == N_c "Interpolation requires same number of features and centers." # TODO remove assertion
+    S̃ = [ S ;                               # N_d × (N_c + Q)
+          P' zeros(eltype(S), Q, Q )]       # Q × N_d and Q × Q 
+    RHS_padded = [ RHS;
+        zeros( eltype(RHS), Q, size(RHS,2) ) ];
+    coeff = S̃ \ RHS_padded 
+    return _coeff_matrices( coeff, S̃, RHS_padded, N_c, Q )
+end
+
+ function _coefficients( Φ, P, S :: StaticMatrix, RHS :: StaticMatrix, ::Val{:interpolation} )
+    N_d, N_c = size(Φ); Q = size(P,2);
+    @assert N_d == N_c "Interpolation requires same number of features and centers." # TODO remove assertion
+
+    S̃ = [S ; 
+         P' @SMatrix(zeros(eltype(S),Q,Q)) ];
+    RHS_padded = [ RHS;
+        @SMatrix(zeros(eltype(RHS), Q ,size(RHS,2)))];
+    coeff = S̃ \ RHS_padded 
+    return _coeff_matrices( coeff, S̃, RHS_padded, N_c, Q )
 end
 
 # We can easily impose linear equality constraints,
@@ -243,6 +262,7 @@ end
 # ```
 # See [^adv_eco] for details.
 
+# TODO make this respect StaticMatrices too!! #src
 function constrained_coefficients( 
         w :: AbstractMatrix{<:Real}, 
         λ :: AbstractMatrix{<:Real}, 
@@ -274,7 +294,7 @@ function constrained_coefficients(
     c = ĉ - δ  # coefficients for constrained problem
 
     N_c = size(w,1)
-
+ 
     return c[1 : N_c, :], c[N_c+1:end, :]
 end
 
@@ -347,6 +367,7 @@ function RBFModel(
         centers :: AbstractVector{ <:NumberOrVector } = Vector{Float16}[],
         interpolation_indices :: AbstractVector{ <: Int } = Int[],
         vector_output :: Bool = true,
+        coeff_mode :: Symbol = :auto
     )
 
     ## Basic Data integrity checks
@@ -378,7 +399,12 @@ function RBFModel(
         canonical_basis( num_vars, poly_deg, poly_precision )
     end
 
-    w, λ, S, RHS = coefficients( sites, values, kernels, poly_basis_sys )
+    if coeff_mode == :auto
+        can_interpolate_uniquely = φ isa RadialFunction ? poly_deg >= cpd_order(φ) - 1 : all( poly_deg >= cpd_order(phi) - 1 for phi in φ )
+        coeff_mode = num_sites == num_centers && can_interpolate_uniquely ? :interpolation : :ls
+    end
+
+    w, λ, S, RHS = coefficients( sites, values, kernels, poly_basis_sys; mode = coeff_mode )
 
     if !isempty(interpolation_indices)
         w, λ = constrained_coefficients( w, λ, S, RHS, interpolation_indices)
@@ -428,7 +454,7 @@ function RBFInterpolationModel(
         poly_deg = max( poly_deg,  cpd_order(φ) - 1 )
     end
 
-    mod = RBFModel(features, labels, φ, poly_deg; vector_output)
+    mod = RBFModel(features, labels, φ, poly_deg; vector_output, coeff_mode = :interpolation)
     return RBFInterpolationModel( mod )
 end
 

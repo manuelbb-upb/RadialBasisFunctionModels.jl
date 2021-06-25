@@ -1,8 +1,5 @@
 # # Some Radial Functions
 
-using Parameters: @with_kw
-
-#%%
 # The **Gaussian** is defined by ``φ(ρ) = \exp \left( - (αρ)^2 \right)``, where 
 # ``α`` is a shape parameter to fine-tune the function.
 
@@ -53,7 +50,7 @@ end
 cpd_order( φ :: Multiquadric ) = ceil( Int, φ.β ) 
 df(φ :: Multiquadric, ρ :: Real ) = (-1)^(ceil(Int, φ.β)) * 2 * φ.α * φ.β * ρ * ( 1 + (φ.α * ρ)^2 )^(φ.β - 1)
 
-# Related is the **Inverse Multiquadric** `` φ(ρ) = (1+(αρ)^2)^{-β}`` is related:
+# Related is the **Inverse Multiquadric** `` φ(ρ) = (1+(αρ)^2)^{-β}``:
 """
     InverseMultiquadric( α = 1, β = 1//2 ) <: RadialFunction
 

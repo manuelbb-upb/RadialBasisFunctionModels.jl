@@ -15,15 +15,15 @@ using RadialBasisFunctionModels.StaticArrays
 		features = rand(T, 5)
 		labels = rand(T, 5)
 
-		rbf = RBFModel( features, labels, φ )
+		rbf = RBFModel( features, labels, φ; )
 
 		@test typeof(rbf).parameters[1] == true
 		@test rbf(features[1]) isa Vector{T}
-		#if T != Float16 
+		if T != Float16 
 			for (f,l) in zip(features, labels) 
 				@test isapprox(rbf(f)[1], l; atol = 0.01)
 			end
-		#end
+		end
 		@test rbf.rbf.kernels[1].c isa Vector{T}
 
 		rbf = RBFModel( features, labels; vector_output = false )
@@ -40,14 +40,15 @@ end
 
 #%%
 
-@testset "Vector{Vector{AbstractFloat}}" begin 
-	n_in = 2
-	n_out = 3
+@testset "NonStaticData" begin 
+	
 	for T in subtypes(AbstractFloat)
 		for φ in [Gaussian(), InverseMultiquadric(), Multiquadric(), Cubic(), ThinPlateSpline(1)]
-
-			features = [ rand(T, n_in) for i = 1 : 5 ]
-			labels = [ rand(T, n_out) for i = 1 : 5 ]
+			n_in = rand(1:10)
+			n_out = rand(1:10)
+			num_data = n_in + 1
+			features = [ rand(T, n_in) for i = 1 : num_data ]
+			labels = [ rand(T, n_out) for i = 1 : num_data ]
 
 			rbf = RBFModel( features, labels, φ, 1 )
 
@@ -73,44 +74,59 @@ end
 end
 
 #%%
-@testset "StaticArrays" begin 
-	n_in = 2 
-	n_out = 3
-	φ = Gaussian()
-	T = Float32
+@testset "StaticArraysAndTypes" begin 
+		
+	FTypes = Iterators.Stateful(Iterators.cycle(subtypes(AbstractFloat)))
+	Rads = Iterators.Stateful(Iterators.cycle([Cubic(),Gaussian(),Multiquadric(),InverseMultiquadric(),ThinPlateSpline(1)])) 
 
-	sized_features = [ SizedVector{n_in}(rand(T,n_in)) for i = 1 : 5 ]
-	sized_labels = [ SizedVector{n_out}(rand(T, n_out)) for i = 1 : 5 ]
+	SizedTypes = [ SizedVector, MVector, SVector ]
 
-	rbf = RBFModel(sized_features, sized_labels, φ)
-	xs = sized_features[1]
-	x = Vector(xs)
-	
-	@test length( rbf.rbf.kernels ) == 5
-	@test rbf.rbf.kernels[1].c isa SizedVector
-	@test !(rbf.rbf.weights isa StaticArray)	# no sized array of sized centers was provided
-	@test rbf.rbf(xs) isa Vector{T}	# hence, overall output not sized neither
-	@test rbf.rbf(x) isa Vector{T}
+	for FT in SizedTypes, LT in SizedTypes, CT in SizedTypes 
+		n_in = rand(1:10)
+		n_out = rand(1:10)
+		num_data = n_in + 1
+		T = popfirst!(FTypes)
+		φ = popfirst!(Rads)
 
-	@test !(rbf.psum.weights isa StaticArray)	# no sized array of sized centers was provided
-	@test rbf.psum(xs) isa Vector{T}	# hence, overall output not sized neither
-	@test rbf.psum(x) isa Vector{T}
+		sized_features = [ FT{n_in}(rand(T,n_in)) for i = 1 : num_data ]
+		sized_labels = [ LT{n_out}(rand(T, n_out)) for i = 1 : num_data ]
 
-	@test rbf(xs) isa Vector{T}
-	@test rbf(x) isa Vector{T}
+		rbf = RBFModel(sized_features, sized_labels, φ)
+		
+		@test length( rbf.rbf.kernels ) == num_data
+		@test rbf.rbf.kernels[1].c isa FT
+		@test !(rbf.rbf.weights isa StaticArray)	# no sized array of sized centers was provided
 
-	## if we provide length information on the number of centers, we should get sized output
-	sized_scenters = SizedVector{5}( sized_features )
-	rbf = RBFModel( sized_features, sized_labels, φ; centers = sized_scenters )
+		@test !(rbf.psum.weights isa StaticArray)	# no sized array of sized centers was provided
 
-	@test rbf.rbf.weights isa StaticArray
-	@test rbf.psum.weights isa StaticArray
-	@test rbf.rbf(xs) isa SizedVector 
-	@test rbf.psum(xs) isa SizedVector
-	@test rbf(xs) isa SizedVector
-	@test rbf.rbf(x) isa Vector 
-	@test rbf.psum(x) isa Vector
-	@test rbf(x) isa Vector
+		# check if _type_guard works
+		x = Vector(sized_features[1])
+		@test rbf.rbf(x) isa Vector
+		@test rbf.psum(x) isa Vector
+		@test rbf(x) isa Vector
+		for XT in SizedTypes
+			ξ = XT{n_in}(x)
+			@test rbf.rbf(ξ) isa XT 
+			@test rbf.psum(ξ) isa XT 
+			@test rbf(ξ) isa XT
+		end
+		## if we provide length information on the number of centers, we should get sized output
+		sized_scenters = SizedVector{num_data}( sized_features )
+		rbf = RBFModel( sized_features, sized_labels, φ; centers = sized_scenters )
+
+		@test rbf.rbf.weights isa StaticArray
+		@test rbf.psum.weights isa StaticArray
+		
+		@test rbf.rbf(x) isa Vector
+		@test rbf.psum(x) isa Vector
+		@test rbf(x) isa Vector
+		for XT in SizedTypes
+			ξ = XT{n_in}(x)
+			@test rbf.rbf(ξ) isa XT 
+			@test rbf.psum(ξ) isa XT 
+			@test rbf(ξ) isa XT
+		end
+	end
 end
 
 #%%
