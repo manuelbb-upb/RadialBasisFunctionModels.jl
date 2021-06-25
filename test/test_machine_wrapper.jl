@@ -3,7 +3,8 @@ current_env = Base.load_path()[1]
 Pkg.activate(@__DIR__)
 
 using RadialBasisFunctionModels
-using Test 
+using Test
+using InteractiveUtils: subtypes 
 
 #%% initialize empty machine 
 # should default to 64 bit precision
@@ -14,13 +15,13 @@ using Test
 	@test isnothing(mach.kernel_args)
 	@test mach.kernel_name == :gaussian
 
-	@test_throws AssertionError fit!(mach)
+	@test_throws AssertionError RadialBasisFunctionModels.fit!(mach)
 
 	add_data!( mach, rand(1), rand(1) )
-	@test_throws AssertionError fit!(mach)  
+	@test_throws AssertionError RadialBasisFunctionModels.fit!(mach)  
 
 	add_data!( mach, rand(1), rand(1) )
-	@test isnothing(fit!(mach))
+	@test isnothing(RadialBasisFunctionModels.fit!(mach))
 
 	# do we interpolate?
 	@test mach( mach.features[1] ) ≈ mach.labels[1]
@@ -44,7 +45,7 @@ end
 		@test F.parameters[1] == typeof(features) == Vector{Vector{T}}
 		@test F.parameters[2] == typeof(labels) == Vector{Vector{T}}
 
-		fit!(mach)
+		RadialBasisFunctionModels.fit!(mach)
 
 		@test mach.valid
 		@test mach( mach.features[1] ) ≈ mach.labels[1]
@@ -76,7 +77,7 @@ end
 			@test F.parameters[1] == typeof(features) == Vector{Vector{T}}
 			@test F.parameters[2] == typeof(labels) == Vector{Vector{T}}
 
-			fit!(mach)
+			RadialBasisFunctionModels.fit!(mach)
 
 			@test mach.valid
 			# @test mach( mach.features[1] ) ≈ mach.labels[1] fails for Float16
@@ -96,7 +97,7 @@ end
 				poly_deg = 1,
 				features, labels 
 			)
-			@test isnothing(fit!(mach))
+			@test isnothing(RadialBasisFunctionModels.fit!(mach))
 			@test mach.valid 
 			@test all( mach(features[i]) ≈ labels[i] for i = 1 : 4 )
 		else
@@ -112,7 +113,7 @@ end
 				poly_deg = 1,
 				features, labels 
 			)
-			@test isnothing(fit!(mach))
+			@test isnothing(RadialBasisFunctionModels.fit!(mach))
 			@test mach.valid 
 			@test all( mach(features[i]) ≈ labels[i] for i = 1 : 4 )
 		end 

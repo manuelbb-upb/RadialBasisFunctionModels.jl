@@ -7,6 +7,7 @@ using RadialBasisFunctionModels
 using Test 
 using ForwardDiff
 using RadialBasisFunctionModels.StaticArrays
+using InteractiveUtils: subtypes
 
 #%%
 @testset "1D-Data" begin 
