@@ -94,7 +94,7 @@ x_s = SVector{3}(x_vec)
 x_m = MVector{3}(x_vec)
 x_sized = SizedVector{3}(x_vec)
 
-@test(#jl 
+@test(#jl
 rbf_sized( x_vec ) isa Vector
 )#jl
 @test(#jl
