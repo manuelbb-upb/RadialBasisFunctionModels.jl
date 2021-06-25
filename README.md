@@ -83,7 +83,6 @@ rbf_scalar = RBFInterpolationModel( X, Y, φ, 1; vector_output = false)
 Z_scalar = rbf_scalar.( X )
 
 Z_scalar isa Vector{Float64}
-@test( #jl
 all( Z_scalar[i] == Z[i][1] for i = 1 : length(Z) )
 ````
 
@@ -128,9 +127,9 @@ rbf_sized( x_vec ) isa Vector
 rbf_sized( x_s ) isa SVector
 rbf_sized( x_m ) isa MVector
 rbf_sized( x_sized ) isa SizedVector
-
-# Machines
 ````
+
+## Machines
 
 There is an MLJ wrapper for the RBFInterpolationModel, exported as `RBFInterpolator`.
 It can be used like other regressors and takes the kernel name as a symbol (and kernel arguments as a vector).

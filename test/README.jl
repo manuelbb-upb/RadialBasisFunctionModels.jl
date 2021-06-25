@@ -23,10 +23,10 @@ Z = rbf.(X)
 rbf_scalar = RBFInterpolationModel( X, Y, φ, 1; vector_output = false)
 Z_scalar = rbf_scalar.( X )
 
-@test(
+@test(#jl
 Z_scalar isa Vector{Float64}
 )#jl
-@test( #jl
+@test(
 all( Z_scalar[i] == Z[i][1] for i = 1 : length(Z) )
 )
 
@@ -60,8 +60,6 @@ rbf_sized( x_m ) isa MVector
 @test(#jl
 rbf_sized( x_sized ) isa SizedVector
 )#jl
-
-# Machines
 
 using MLJBase
 X,y = @load_boston
