@@ -1,14 +1,23 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Main Module · RadialBasisFunctionModels.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link rel="canonical" href="https://manuelbb-upb.github.io/RadialBasisFunctionModels.jl/RadialBasisFunctionModels/"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">RadialBasisFunctionModels.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>Main Module</a><ul class="internal"><li><a class="tocitem" href="#Radial-Basis-Function-Sum."><span>Radial Basis Function Sum.</span></a></li><li class="toplevel"><a class="tocitem" href="#Some-Radial-Functions"><span>Some Radial Functions</span></a></li><li><a class="tocitem" href="#Derivatives"><span>Derivatives</span></a></li><li><a class="tocitem" href="#Getting-the-Coefficients"><span>Getting the Coefficients</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Main Module</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Main Module</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/manuelbb-upb/RadialBasisFunctionModels.jl/blob/master/src/RadialBasisFunctionModels.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><pre><code class="language-julia">export auto_grad, auto_jac, grad, jac, eval_and_auto_grad
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Main Module · RadialBasisFunctionModels.jl</title><script data-outdated-warner src="../assets/warner.js"></script><link rel="canonical" href="https://manuelbb-upb.github.io/RadialBasisFunctionModels.jl/RadialBasisFunctionModels/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.039/juliamono-regular.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.11/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">RadialBasisFunctionModels.jl</a></span></div><form class="docs-search" action="../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../">Home</a></li><li class="is-active"><a class="tocitem" href>Main Module</a><ul class="internal"><li><a class="tocitem" href="#Radial-Basis-Function-Sum."><span>Radial Basis Function Sum.</span></a></li><li class="toplevel"><a class="tocitem" href="#Some-Radial-Functions"><span>Some Radial Functions</span></a></li><li><a class="tocitem" href="#Derivatives"><span>Derivatives</span></a></li><li><a class="tocitem" href="#Getting-the-Coefficients"><span>Getting the Coefficients</span></a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Main Module</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Main Module</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/manuelbb-upb/RadialBasisFunctionModels.jl/blob/master/src/RadialBasisFunctionModels.jl" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><pre><code class="language-julia">using Base: NamedTuple, promote_eltype
+
+export RBFInterpolator
+export RBFMachine, fit!, add_data!
+
+export auto_grad, auto_jac, grad, jac, eval_and_auto_grad
 export eval_and_auto_jac, eval_and_grad, eval_and_jac</code></pre><p>Dependencies of this module:</p><pre><code class="language-julia">using StaticPolynomials
 using ThreadSafeDicts
 using Memoization: @memoize
 using StaticArrays
 using LinearAlgebra: norm
 using Lazy: @forward
+using Parameters: @with_kw
+
+for V in [:SizedVector, :MVector]
+end
 
 import Zygote as Zyg
-using Zygote: Buffer</code></pre><h1 id="Radial-Basis-Function-Models"><a class="docs-heading-anchor" href="#Radial-Basis-Function-Models">Radial Basis Function Models</a><a id="Radial-Basis-Function-Models-1"></a><a class="docs-heading-anchor-permalink" href="#Radial-Basis-Function-Models" title="Permalink"></a></h1><p>The sub-module <code>RadialBasisFunctionModels</code> provides utilities to work with radial basis function [RBF] models. Given <span>$N$</span> data sites <span>$X = \{ x^1, …, x^N \} ⊂ ℝ^n$</span> and values <span>$Y = \{ y^1, …, y^N \} ⊂ ℝ$</span>, an interpolating RBF model <span>$r\colon ℝ^n → ℝ$</span> has the form</p><p class="math-container">\[r(x) = \sum_{i=1}^N w_i φ( \| x - x^i \|_2 ) + p(x),\]</p><p>where <code>p</code> is a multivariate polynomial. The radial function <span>$φ\colon [0, ∞) \to ℝ$</span> defines the RBF and we can solve for the coefficients <span>$w$</span> by solving the interpolation system</p><p class="math-container">\[\begin{equation}
+using Zygote: Buffer</code></pre><h1 id="Radial-Basis-Function-Models"><a class="docs-heading-anchor" href="#Radial-Basis-Function-Models">Radial Basis Function Models</a><a id="Radial-Basis-Function-Models-1"></a><a class="docs-heading-anchor-permalink" href="#Radial-Basis-Function-Models" title="Permalink"></a></h1><p>The module <code>RadialBasisFunctionModels</code> provides utilities to work with radial basis function [RBF] models. Given <span>$N$</span> data sites <span>$X = \{ x^1, …, x^N \} ⊂ ℝ^n$</span> and values <span>$Y = \{ y^1, …, y^N \} ⊂ ℝ$</span>, an interpolating RBF model <span>$r\colon ℝ^n → ℝ$</span> has the form</p><p class="math-container">\[r(x) = \sum_{i=1}^N w_i φ( \| x - x^i \|_2 ) + p(x),\]</p><p>where <code>p</code> is a multivariate polynomial. The radial function <span>$φ\colon [0, ∞) \to ℝ$</span> defines the RBF and we can solve for the coefficients <span>$w$</span> by solving the interpolation system</p><p class="math-container">\[\begin{equation}
 r( x^i ) \stackrel{!}= y^i \quad \text{for all }i=1,…,N
 \label{eqn:coeff_basic}
 \end{equation}\]</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>See the section about <strong><a href="#Getting-the-Coefficients">Getting the Coefficients</a></strong> for how we actually solve the equation system.</p></div></div><h2 id="Radial-Basis-Function-Sum."><a class="docs-heading-anchor" href="#Radial-Basis-Function-Sum.">Radial Basis Function Sum.</a><a id="Radial-Basis-Function-Sum.-1"></a><a class="docs-heading-anchor-permalink" href="#Radial-Basis-Function-Sum." title="Permalink"></a></h2><p>The function <span>$k(•) = φ(\|•\|_2)$</span> is radially symmetric around the origin. <span>$k$</span> is called the kernel of an RBF.</p><p>We define an abstract super type for radial functions:</p><pre><code class="language-julia">abstract type RadialFunction &lt;: Function end</code></pre><p>Each Type that inherits from <code>RadialFunction</code> should implement an evaluation method. It takes the radius/distance <span>$ρ = ρ(x) = \| x - x^i \|$</span> from <span>$x$</span> to a specific center <span>$x^i$</span>.</p><pre><code class="language-julia">(φ :: RadialFunction )( ρ :: Real ) :: Real = Nothing;</code></pre><p>We also need the so called order of conditional positive definiteness:</p><pre><code class="language-julia">cpd_order( φ :: RadialFunction) :: Int = nothing;</code></pre><p>The derivative can also be specified. It defaults to</p><pre><code class="language-julia">df( φ :: RadialFunction, ρ ) = Zyg.gradient( φ, ρ )[1]</code></pre><pre class="documenter-example-output">df (generic function with 1 method)</pre><p>The file <code>radial_funcs.jl</code> contains various radial function implementations.</p><h1 id="Some-Radial-Functions"><a class="docs-heading-anchor" href="#Some-Radial-Functions">Some Radial Functions</a><a id="Some-Radial-Functions-1"></a><a class="docs-heading-anchor-permalink" href="#Some-Radial-Functions" title="Permalink"></a></h1><p>The <strong>Gaussian</strong> is defined by <span>$φ(ρ) = \exp \left( - (αρ)^2 \right)$</span>, where <span>$α$</span> is a shape parameter to fine-tune the function.</p><pre><code class="language-julia">&quot;&quot;&quot;
@@ -19,13 +28,9 @@ A `RadialFunction` with
     φ(ρ) = \\exp( - (α ρ)^2 ).
 ```
 &quot;&quot;&quot;
-struct Gaussian{R&lt;:Real} &lt;: RadialFunction
-    α :: R
-
-    function Gaussian( α :: R = 1 ) where R&lt;:Real
-        @assert α &gt; 0 &quot;The shape parameter `α` must be positive.&quot;
-        return new{R}(α)
-    end
+@with_kw struct Gaussian{R&lt;:Real} &lt;: RadialFunction
+    α :: R = 1
+    @assert α &gt; 0 &quot;The shape parameter `α` must be positive.&quot;
 end
 
 function ( φ :: Gaussian )( ρ :: Real )
@@ -41,16 +46,13 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{ \\lceil β \\rceil } ( 1 + (αρ)^2 )^β
 ```
 &quot;&quot;&quot;
-struct Multiquadric{R&lt;:Real,S&lt;:Real} &lt;: RadialFunction
-    α :: R   # shape parameter
-    β :: S   # exponent
+@with_kw struct Multiquadric{R&lt;:Real,S&lt;:Real} &lt;: RadialFunction
+    α :: R  = 1     # shape parameter
+    β :: S  = 1//2  # exponent
 
-    function Multiquadric(α :: R = 1, β :: S = 1//2 ) where {R&lt;:Real, S&lt;:Real}
-        @assert α &gt; 0 &quot;The shape parameter `α` must be positive.&quot;
-        @assert β % 1 != 0 &quot;The exponent must not be an integer.&quot;
-        @assert β &gt; 0 &quot;The exponent must be positive.&quot;
-        new{R,S}(α,β)
-    end
+    @assert α &gt; 0 &quot;The shape parameter `α` must be positive.&quot;
+    @assert β % 1 != 0 &quot;The exponent must not be an integer.&quot;
+    @assert β &gt; 0 &quot;The exponent must be positive.&quot;
 end
 
 function ( φ :: Multiquadric )( ρ :: Real )
@@ -58,7 +60,7 @@ function ( φ :: Multiquadric )( ρ :: Real )
 end
 
 cpd_order( φ :: Multiquadric ) = ceil( Int, φ.β )
-df(φ :: Multiquadric, ρ :: Real ) = (-1)^(ceil(Int, φ.β)) * 2 * φ.α * φ.β * ρ * ( 1 + (φ.α * ρ)^2 )^(φ.β - 1)</code></pre><pre class="documenter-example-output">df (generic function with 3 methods)</pre><p>Related is the <strong>Inverse Multiquadric</strong> <span>$φ(ρ) = (1+(αρ)^2)^{-β}$</span> is related:</p><pre><code class="language-julia">&quot;&quot;&quot;
+df(φ :: Multiquadric, ρ :: Real ) = (-1)^(ceil(Int, φ.β)) * 2 * φ.α * φ.β * ρ * ( 1 + (φ.α * ρ)^2 )^(φ.β - 1)</code></pre><pre class="documenter-example-output">df (generic function with 3 methods)</pre><p>Related is the <strong>Inverse Multiquadric</strong> <span>$φ(ρ) = (1+(αρ)^2)^{-β}$</span>:</p><pre><code class="language-julia">&quot;&quot;&quot;
     InverseMultiquadric( α = 1, β = 1//2 ) &lt;: RadialFunction
 
 A `RadialFunction` with
@@ -66,15 +68,12 @@ A `RadialFunction` with
     φ(ρ) = ( 1 + (αρ)^2 )^{-β}
 ```
 &quot;&quot;&quot;
-struct InverseMultiquadric{R&lt;:Real,S&lt;:Real} &lt;: RadialFunction
-    α :: R
-    β :: S
+@with_kw struct InverseMultiquadric{R&lt;:Real,S&lt;:Real} &lt;: RadialFunction
+    α :: R  = 1
+    β :: S  = 1//2
 
-    function InverseMultiquadric( α :: Real = 1, β :: Real = 1//2 ) where {R&lt;:Real, S&lt;:Real}
-        @assert α &gt; 0 &quot;The shape parameter `α` must be positive.&quot;
-        @assert β &gt; 0 &quot;The exponent must be positive.&quot;
-        new{R,S}(α, β)
-    end
+    @assert α &gt; 0 &quot;The shape parameter `α` must be positive.&quot;
+    @assert β &gt; 0 &quot;The exponent must be positive.&quot;
 end
 
 function ( φ :: InverseMultiquadric )( ρ :: Real )
@@ -90,14 +89,11 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{ \\lceil β \\rceil /2 } ρ^β
 ```
 &quot;&quot;&quot;
-struct Cubic{R&lt;:Real} &lt;: RadialFunction
-    β :: R
+@with_kw struct Cubic &lt;: RadialFunction
+    β :: Int = 3
 
-    function Cubic( β :: R = 3 ) where R&lt;:Real
-        @assert β &gt; 0 &quot;The exponent `β` must be positive.&quot;
-        @assert β % 2 != 0 &quot;The exponent `β` must not be an even number.&quot;
-        new{R}(β)
-    end
+    @assert β &gt; 0 &quot;The exponent `β` must be positive.&quot;
+    @assert β % 2 != 0 &quot;The exponent `β` must not be an even number.&quot;
 end
 
 function ( φ :: Cubic )( ρ :: Real )
@@ -113,21 +109,18 @@ A `RadialFunction` with
     φ(ρ) = (-1)^{k+1} ρ^{2k} \\log(ρ)
 ```
 &quot;&quot;&quot;
-struct ThinPlateSpline &lt;: RadialFunction
-    k :: Int
+@with_kw struct ThinPlateSpline &lt;: RadialFunction
+    k :: Int = 2
 
-    ThinPlateSpline( k :: Real = 2 ) = begin
-        @assert k &gt; 0 &amp;&amp; k % 1 == 0 &quot;The parameter `k` must be a positive integer.&quot;
-        new( Int(k) )
-    end
+    @assert k &gt; 0 &amp;&amp; k % 1 == 0 &quot;The parameter `k` must be a positive integer.&quot;
 end
 
-function (φ :: ThinPlateSpline )( ρ :: Real )
-    (-1)^(k+1) * ρ^(2*k) * log( ρ )
+function (φ :: ThinPlateSpline )( ρ :: T ) where T&lt;:Real
+    ρ == 0 ? zero(T) : (-1)^(φ.k+1) * ρ^(2*φ.k) * log( ρ )
 end
 
 cpd_order( φ :: ThinPlateSpline ) = φ.k + 1
-df(φ :: ThinPlateSpline, ρ :: Real ) = ρ == 0 ? 0 : (-1)^(φ.k+1) * ρ^(2*φ.k - 1) * ( 2 * φ.k * log(ρ) + 1)</code></pre><pre class="documenter-example-output">df (generic function with 6 methods)</pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The thin plate spline with <code>k = 1</code> is not differentiable at <code>ρ=0</code> but we define the derivative as 0, which makes results in a continuous extension.</p></div></div><p>From an <code>RadialFunction</code> and a vector we can define a shifted kernel function.</p><pre><code class="language-julia">const NumberOrVector = Union{&lt;:Real, AbstractVector{&lt;:Real}}
+df(φ :: ThinPlateSpline, ρ :: Real ) = ρ == 0 ? 0 : (-1)^(φ.k+1) * ρ^(2*φ.k - 1) * ( 2 * φ.k * log(ρ) + 1)</code></pre><pre class="documenter-example-output">df (generic function with 6 methods)</pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>The thin plate spline with <code>k = 1</code> is not differentiable at <code>ρ=0</code> but we define the derivative as 0, which results in a continuous extension.</p></div></div><p>From an <code>RadialFunction</code> and a vector we can define a shifted kernel function.</p><pre><code class="language-julia">const NumberOrVector = Union{&lt;:Real, AbstractVector{&lt;:Real}}
 
 struct ShiftedKernel{RT &lt;: RadialFunction, CT &lt;: AbstractVector{&lt;:Real}} &lt;: Function
     φ :: RT
@@ -138,11 +131,11 @@ norm2( vec ) = norm(vec, 2)
 
 &quot;Evaluate kernel `k` at `x - k.c`.&quot;
 function (k::ShiftedKernel)( x :: AbstractVector{&lt;:Real} )
-    return k.φ( norm2( x - k.c ) )
-end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.ShiftedKernel</pre><p>A vector of <span>$N$</span> kernels is a mapping <span>$ℝ^n → ℝ^N, \ x ↦ [ k₁(x), …, k_N(x)]$</span>.</p><pre><code class="language-julia">&quot;Evaluate ``x ↦ [ k₁(x), …, k_{N_c}(x)]`` at `x`.&quot;
-function ( K::AbstractVector{&lt;:ShiftedKernel})( x :: AbstractVector{&lt;:Real} )
-    [ k(x) for k ∈ K ]
-end</code></pre><pre class="documenter-example-output">Base.AbstractVector</pre><p>Suppose, we have calculated the distances <span>$\|x - x^i\|$</span> beforehand. We can save redundant effort by passing them to the radial functions of the kernels.</p><pre><code class="language-julia">&quot;Evaluate `k.φ` for distance `ρ` where `ρ` should equal `x - k.c` for the argument `x`.&quot;
+    return k.φ( norm2( x .- k.c ) )
+end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.ShiftedKernel</pre><p>A vector of <span>$N$</span> kernels is a mapping <span>$ℝ^n → ℝ^N, \ x ↦ [ k₁(x), …, k_N(x)]$</span>.</p><pre><code class="language-julia">_eval_vec_of_kernels( K, x ) = [k(x) for k ∈ K]
+
+&quot;Evaluate ``x ↦ [ k₁(x), …, k_{N_c}(x)]`` at `x`.&quot;
+( K::AbstractVector{&lt;:ShiftedKernel})( x ) = _eval_vec_of_kernels( K, x )</code></pre><pre class="documenter-example-output">Base.AbstractVector</pre><p>Suppose, we have calculated the distances <span>$\|x - x^i\|$</span> beforehand. We can save redundant effort by passing them to the radial functions of the kernels.</p><pre><code class="language-julia">&quot;Evaluate `k.φ` for distance `ρ` where `ρ` should equal `x - k.c` for the argument `x`.&quot;
 eval_at_dist( k :: ShiftedKernel , ρ :: Real ) = k.φ(ρ)
 
 &quot;Evaluate ``x ↦ [ k₁(x), …, k_{N_c}(x)]``, provided the distances ``[ ρ_1(x), …, ρ_{N_c}(x) ]``.&quot;
@@ -166,15 +159,20 @@ end</code></pre><p>Make it display nicely:</p><pre><code class="language-julia">
         print(io, &quot;* with $(n_kernels) kernels in an array of type $(KT)\n&quot;)
         print(io, &quot;* and a $(n_kernels)×$(n_out) weight matrix of type $(WT).&quot;)
     end
-end</code></pre><p>We can easily evaluate the <code>ℓ</code>-th output of the <code>RBFPart</code>:</p><pre><code class="language-julia"># @doc &quot;Evaluate output `ℓ` of RBF sum `rbf::RBFSum`&quot;
-function (rbf :: RBFSum)(x :: VT, ℓ :: Int) where VT &lt;: AbstractVector{&lt;:Real}
-    (rbf.weights[ℓ,:]&#39;rbf.kernels(x))[1]
-end</code></pre><p>The overall output is a vector, and we also get it via matrix multiplication. First, define helpers so that the right type is returned:</p><pre><code class="language-julia">type_guard( T :: Type{&lt;:Vector}, x :: AbstractVector{&lt;:Real}, :: Int ) = convert( T, x )
-type_guard( :: Type{&lt;:SVector}, x :: AbstractVector, n_out :: Int) = SVector{n_out}(x)
-type_guard( :: Type{&lt;:SizedVector}, x :: AbstractVector, n_out :: Int) = SizedVector{n_out}(x)
+end</code></pre><p>We can easily evaluate the <code>ℓ</code>-th output of the <code>RBFPart</code>:</p><pre><code class="language-julia">@doc &quot;Evaluate outut `ℓ` of RBF sum `rbf::RBFSum`&quot;
+function (rbf :: RBFSum)(x :: AbstractVector, ℓ :: Int)
+    return (rbf.weights[ℓ,:]&#39;rbf.kernels(x))[1]
+end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.RBFSum</pre><p>The overall output is a vector, and we also get it via matrix multiplication.</p><pre><code class="language-julia">_eval_rbfsum(rbf::RBFSum, x ) = rbf.weights*rbf.kernels(x)
+&quot;Evaluate `rbf::RBFSum` at `x`.&quot;
+(rbf :: RBFSum)( x :: AbstractVector ) = _eval_rbfsum(rbf, x)</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.RBFSum</pre><p>We want to return the right type and use <code>_type_guard</code>:</p><pre><code class="language-julia">_type_guard( x , :: Type{&lt;:Vector}, :: Int ) = convert( Vector, x)
+for V in [:SVector, :MVector, :SizedVector ]
+    @eval _type_guard( x, ::Type{ &lt;: $V }, n_out :: Int ) = convert($V{ n_out }, x)
+end
 
-# @doc &quot;Evaluate `rbf::RBFSum` at `x`.&quot;
-(rbf :: RBFSum)( x :: VT ) where VT &lt;: AbstractVector{&lt;:Real} = type_guard( VT, rbf.weights*rbf.kernels(x), rbf.num_outputs )</code></pre><p>As before, we allow to pass precalculated distance vectors:</p><pre><code class="language-julia">function eval_at_dist( rbf::RBFSum, dists :: AbstractVector{&lt;:Real}, ℓ :: Int )
+(rbf :: RBFSum)( x :: Vector ) = _type_guard( _eval_rbfsum(rbf, x), Vector, rbf.num_outputs )
+function (rbf :: RBFSum)( x :: T ) where T&lt;:Union{SVector,MVector,SizedVector}
+    return _type_guard( _eval_rbfsum(rbf, x), T, rbf.num_outputs )
+end</code></pre><p>As before, we allow to pass precalculated distance vectors:</p><pre><code class="language-julia">function eval_at_dist( rbf::RBFSum, dists :: AbstractVector{&lt;:Real}, ℓ :: Int )
    rbf.weights[ℓ,:]&#39;eval_at_dist( rbf.kernels, dists )
 end
 
@@ -212,8 +210,12 @@ end</code></pre><p>This allows for the <code>PolySum</code>. <code>polys</code> 
     end
 end
 
-(p :: PolySum)(x :: VT) where VT &lt;: AbstractVector{&lt;:Real} = type_guard( VT, p.weights*p.polys(x), p.num_outputs)
-(p :: PolySum)(x :: AbstractVector{&lt;:Real},ℓ::Int) = (p.weights[ℓ,:]&#39;p.polys(x))[end]</code></pre><p>We now have all ingredients to define the model type.</p><pre><code class="language-julia">&quot;&quot;&quot;
+eval_psum( p :: PolySum, x ) = p.weights * p.polys(x)
+(p :: PolySum)(x :: AbstractVector ) = eval_psum( p, x )
+(p :: PolySum)(x :: Vector ) = _type_guard(eval_psum(p,x), Vector, p.num_outputs )
+(p :: PolySum)(x :: T) where T&lt;:Union{SVector,MVector,SizedVector} = _type_guard( eval_psum(p,x), T, p.num_outputs)
+
+(p :: PolySum)(x,ℓ::Int) = (p.weights[ℓ,:]&#39;p.polys(x))[end]</code></pre><p>We now have all ingredients to define the model type.</p><pre><code class="language-julia">&quot;&quot;&quot;
     RBFModel{V}
 
 * `V` is `true` by default. It can be set to `false` only if the number
@@ -245,7 +247,7 @@ end</code></pre><pre class="documenter-example-output">Main.__atexample__named__
         print(io, &quot;mapping from ℝ^$(mod.num_vars) to ℝ^$(mod.num_outputs).&quot;)
     end
 end</code></pre><p>Evaluation is easy. We accept an additional <code>::Nothing</code> argument that does nothing for now, but saves some typing later.</p><pre><code class="language-julia">function vec_eval(mod :: RBFModel, x :: AbstractVector{&lt;:Real}, :: Nothing)
-    return mod.rbf(x) + mod.psum( x )
+    return mod.rbf(x) .+ mod.psum( x )
 end
 
 function scalar_eval(mod :: RBFModel, x :: AbstractVector{&lt;:Real}, :: Nothing )
@@ -332,25 +334,14 @@ end</code></pre><pre class="documenter-example-output">grad (generic function wi
     return grad(mod.rbf, x, ℓ) + grad( mod.psum, x, ℓ )
 end
 
-function grad( mod :: RBFModel, x :: Vector{&lt;:Real}, ℓ :: Int = 1 )
-    G = _grad(mod, x, ℓ)
-
-    if G isa Vector
-        return G
-    else
-        return [ G.data... ]
-    end
+function grad( mod :: RBFModel, x :: AbstractVector{&lt;:Real}, ℓ :: Int = 1 )
+    return _grad(mod, x, ℓ)
 end
 
-function grad( mod :: RBFModel, x :: StaticVector{T, R} where{T, R&lt;:Real}, ℓ :: Int = 1 )
-    G = _grad(mod, x, ℓ)
-
-    if G isa StaticArray
-        return G
-    else
-        return SizedVector{mod.num_vars}(G)
-    end
-end</code></pre><pre class="documenter-example-output">grad (generic function with 11 methods)</pre><p>We can exploit our custom evaluation methods for &quot;distances&quot;:</p><pre><code class="language-julia">function _offsets_and_dists( rbf :: RBFSum, x :: AbstractVector{&lt;:Real} )
+grad( mod :: RBFModel, x :: Vector{&lt;:Real}, ℓ :: Int = 1 ) = _type_guard( _grad(mod, x, ℓ), Vector, mod.num_vars )
+function grad( mod :: RBFModel, x :: T, ℓ :: Int = 1 ) where T &lt;: Union{SVector, MVector, SizedVector}
+    return _type_guard( _grad(mod, x, ℓ), T, mod.num_vars )
+end</code></pre><pre class="documenter-example-output">grad (generic function with 13 methods)</pre><p>We can exploit our custom evaluation methods for &quot;distances&quot;:</p><pre><code class="language-julia">function _offsets_and_dists( rbf :: RBFSum, x :: AbstractVector{&lt;:Real} )
     offsets = [ x - k.c for k ∈ rbf.kernels ]
     dists = norm2.(offsets)
     return offsets, dists
@@ -369,7 +360,7 @@ end</code></pre><pre class="documenter-example-output">eval_and_grad (generic fu
 end</code></pre><pre class="documenter-example-output">eval_and_grad (generic function with 5 methods)</pre><p>Combine for <code>RBFModel</code>:</p><pre><code class="language-julia">function eval_and_grad( mod :: RBFModel, x :: AbstractVector{&lt;:Real}, ℓ :: Int = 1 )
     res_rbf, g_rbf = eval_and_grad( mod.rbf, x, ℓ )
     res_polys, g_polys = eval_and_grad( mod.psum, x, ℓ )
-    return res_rbf + res_polys, g_rbf + g_polys
+    return res_rbf .+ res_polys, g_rbf .+ g_polys
 end</code></pre><pre class="documenter-example-output">eval_and_grad (generic function with 7 methods)</pre><p>For the jacobian, we use the same trick to save evaluations.</p><pre><code class="language-julia">function jac( rbf :: RBFSum, x :: AbstractVector{&lt;:Real} )
     offsets, dists = _offsets_and_dists(rbf, x)
     rbf.weights * jac( rbf.kernels, offsets, dists )
@@ -384,18 +375,11 @@ function _jac( mod :: RBFModel, x :: AbstractVector{&lt;:Real} )
     jac( mod.rbf, x ) + jac( mod.psum, x)
 end
 
-function jac( mod :: RBFModel, x :: Vector{R}) where R&lt;:Real
-    Matrix( _jac(mod, x) )
-end
-
-function jac( mod :: RBFModel, x :: StaticVector{T, R} ) where{T, R&lt;:Real}
-    J = _jac(mod, x)
-    if J isa StaticArray
-        return J
-    else
-        return SizedMatrix{mod.num_outputs, mod.num_vars}(J)
-    end
-end</code></pre><pre class="documenter-example-output">jac (generic function with 5 methods)</pre><p>As before, define an &quot;evaluate-and-jacobian&quot; function that saves evaluations:</p><pre><code class="language-julia">function eval_and_jac( rbf :: RBFSum, x :: AbstractVector{&lt;:Real} )
+jac( mod :: RBFModel, x :: AbstractMatrix{&lt;:Real} ) = _jac(mod,x)
+jac( mod :: RBFModel, x :: Vector{&lt;:Real}) = convert(Matrix, _jac(mod,x))
+jac( mod :: RBFModel, x :: SVector{&lt;:Real}) = convert( SMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x) )
+jac( mod :: RBFModel, x :: MVector{&lt;:Real}) = convert( MMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x) )
+jac( mod :: RBFModel, x :: SizedVector{&lt;:Real}) = convert( SizedMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x) )</code></pre><pre class="documenter-example-output">jac (generic function with 8 methods)</pre><p>As before, define an &quot;evaluate-and-jacobian&quot; function that saves evaluations:</p><pre><code class="language-julia">function eval_and_jac( rbf :: RBFSum, x :: AbstractVector{&lt;:Real} )
     offsets, dists = _offsets_and_dists(rbf, x)
     res = eval_at_dist( rbf, dists )
     J = rbf.weights * jac( rbf.kernels, offsets, dists )
@@ -411,7 +395,9 @@ function eval_and_jac( mod :: RBFModel, x :: AbstractVector{&lt;:Real} )
     res_rbf, J_rbf = eval_and_jac( mod.rbf, x )
     res_polys, J_polys = eval_and_jac( mod.psum, x)
     return res_rbf + res_polys, J_rbf + J_polys
-end</code></pre><pre class="documenter-example-output">eval_and_jac (generic function with 3 methods)</pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Hessians are not yet implemented.</p></div></div><p>For the Hessian <span>$Hr \colon ℝ^n \to ℝ^{n\times n}$</span> we need the gradients of the component functions</p><p class="math-container">\[    ψ_j(ξ) = \frac{ φ&#39;( \left\| ξ \right\| )}{\|ξ\|} ξ_j\]</p><p>Suppose <span>$ξ ≠ 0$</span>. First, using the product rule, we have</p><p class="math-container">\[   \dfrac{∂}{∂ξ_i}
+end
+
+# TODO type stable eval_and_grad and eval_and_jac ?</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Hessians are not yet implemented.</p></div></div><p>For the Hessian <span>$Hr \colon ℝ^n \to ℝ^{n\times n}$</span> we need the gradients of the component functions</p><p class="math-container">\[    ψ_j(ξ) = \frac{ φ&#39;( \left\| ξ \right\| )}{\|ξ\|} ξ_j\]</p><p>Suppose <span>$ξ ≠ 0$</span>. First, using the product rule, we have</p><p class="math-container">\[   \dfrac{∂}{∂ξ_i}
    \left(
    \frac{ φ&#39;( \left\| ξ \right\| )}{\|ξ\|} ξ_j
    \right) =
@@ -464,7 +450,7 @@ function non_negative_solutions( d :: Int, n :: Int )
         j = 1
         for i = 0 : d
             # find all solutions of length `n-1` that sum to `i`
-            # if add `d-i` to each column, then each column
+            # if we add `d-i` to each column, then each column
             # has `n` elements and sums to `d`
             padded_shorter_solutions = vcat( d-i, non_negative_solutions(i, n-1) )
             num_shorter_sols = size( padded_shorter_solutions, 2 )
@@ -473,30 +459,32 @@ function non_negative_solutions( d :: Int, n :: Int )
         end
         return sol_matrix
     end
-end
+end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.non_negative_solutions</pre><p>The polyonmial basis exponents are then given by all possible <span>$\bar{d}\le d$</span>:</p><pre><code class="language-julia">@doc &quot;&quot;&quot;
+    non_negative_solutions_ineq( d :: Int, n :: Int)
 
+Return a matrix with columns that correspond to solution vectors
+``[x_1, …, x_n]`` to the equation ``x_1 + … + x_n &lt;= d``,
+where the variables are non-negative integers.
+&quot;&quot;&quot;
 function non_negative_solutions_ineq( d :: Int, n :: Int )
     return hcat( (non_negative_solutions( d̄, n ) for d̄=0:d )... )
-end</code></pre><pre class="documenter-example-output">non_negative_solutions_ineq (generic function with 1 method)</pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>I did an unnecessary rewrite of <code>non_negative_solutions</code> to be Zygote-compatible. Therefore the buffers...</p></div></div><p><code>Combinatorics</code> has <code>multiexponents</code> which should do the same...</p><p>We <strong>don&#39;t</strong> use <code>DynamicPolynomials.jl</code> to generate the Polyomials <strong>anymore</strong>. Zygote did overflow when there were calculations with those polynomials. Not a problem for calculating the basis (because of <code>@nograd</code>), but when constructing the outputs from them. Instead we directly construct <code>StaticPolynomial</code>s and define a <code>PolynomialSystem</code> that evaluates all basis polynomials.</p><pre><code class="language-julia">@memoize ThreadSafeDict function _canonical_basis(n :: Int, d::Int, OneType :: Type = Float64)
-    if d &lt; 0
-        return EmptyPolySystem{n}()
-    else
-        exponent_matrix = non_negative_solutions_ineq( d, n )
-        one16 = OneType(1)
-        return PolynomialSystem(
-             ( Polynomial( [one16,], e[:,:] ) for e ∈ eachcol(exponent_matrix) )... )
-    end
-end
-
-@doc &quot;&quot;&quot;
+end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.non_negative_solutions_ineq</pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>I did an unnecessary rewrite of <code>non_negative_solutions</code> to be Zygote-compatible. Therefore the matrices etc. <code>Combinatorics</code> has <code>multiexponents</code> which should do the same...</p></div></div><p>We <strong>don&#39;t</strong> use <code>DynamicPolynomials.jl</code> to generate the Polyomials <strong>anymore</strong>. Zygote did overflow when there were calculations with those polynomials. Not a problem for calculating the basis (because of we are <code>ignore()</code>ing the basis calculation now, assuming we never want to differentiate with respect to <code>n,d</code>), but when constructing the outputs from them. Instead we directly construct <code>StaticPolynomial</code>s and define a <code>PolynomialSystem</code> that evaluates all basis polynomials.</p><pre><code class="language-julia">@doc &quot;&quot;&quot;
     canonical_basis( n:: Int, d :: Int ) :: Union{PolynomialSystem, EmptyPolySystem}
 
 Return the canonical basis of the space of `n`-variate
 polynomials of degree at most `d`.
 &quot;&quot;&quot;
-Zyg.@nograd function canonical_basis( n :: Int, d :: Int, OneType :: Type = Float64 )
-    _canonical_basis(n,d, OneType)
-end</code></pre><pre class="documenter-example-output">ZygoteRules._pullback</pre><h3 id="Solving-the-Equation-System"><a class="docs-heading-anchor" href="#Solving-the-Equation-System">Solving the Equation System</a><a id="Solving-the-Equation-System-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-the-Equation-System" title="Permalink"></a></h3><p>Now let <span>$\{p_j\}_{1\le j\le Q}$</span> be a basis of the polynomial space. Set <span>$P = [ p_j(x^i) ] ∈ ℝ^{N × Q}$</span> and <span>$Φ = φ(\| x^i - x^j \|)$</span>. In case of interpolation, the linear equation system for the coefficients of <span>$r$</span> is</p><p class="math-container">\[S c := \begin{equation}
+@memoize ThreadSafeDict function canonical_basis(n :: Int, d::Int, OneType :: Type = Float64)
+    if d &lt; 0
+        return EmptyPolySystem{n}()
+    else
+        exponent_matrix = non_negative_solutions_ineq( d, n )
+        one_float = OneType(1)  # `one_float` is used as coefficient(s) to guarantee floating point output
+        return PolynomialSystem(
+             ( Polynomial( [one_float,], e[:,:] ) for e ∈ eachcol(exponent_matrix) )...
+        )
+    end
+end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.canonical_basis</pre><h3 id="Solving-the-Equation-System"><a class="docs-heading-anchor" href="#Solving-the-Equation-System">Solving the Equation System</a><a id="Solving-the-Equation-System-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-the-Equation-System" title="Permalink"></a></h3><p>Now let <span>$\{p_j\}_{1\le j\le Q}$</span> be a basis of the polynomial space. Set <span>$P = [ p_j(x^i) ] ∈ ℝ^{N × Q}$</span> and <span>$Φ = φ(\| x^i - x^j \|)$</span>. In case of interpolation, the linear equation system for the coefficients of <span>$r$</span> is</p><p class="math-container">\[S c := \begin{equation}
     \begin{bmatrix}
     Φ &amp; P \\
     P^T &amp; 0_{Q × Q}
@@ -532,45 +520,66 @@ The arguments are
 * a `PolynomialSystem` or `EmptyPolySystem` (in case of deg = -1).
 &quot;&quot;&quot;
 function coefficients(
-        sites :: ST,
-        values :: VT,
-        kernels :: AbstractVector{&lt;:ShiftedKernel},
-        polys :: Union{PolynomialSystem,EmptyPolySystem} #Vector{&lt;:DP.Polynomial};
-    ) where {ST &lt;: AbstractVector, VT &lt;: AbstractVector }
+        sites, values, kernels, polys; mode :: Symbol = :ls
+    )
 
-    n_out = length(values[1])
-
-    # Φ-matrix, N_d × N_c, formerly
-    # Zygote-compatible:
     N_c = length(kernels);
     N_d = length(sites);
+    Q = length(polys)
 
     if N_d &lt; N_c
-        error(&quot;underdetermined models not supported yet&quot;)
+        error(&quot;Underdetermined models not supported yet.&quot;)
+    end
+    if N_d &lt; Q
+        error(&quot;Too few data sites for selectod polynomial degree. (Need at least $(Q).)&quot;)
     end
 
-    Φ = hcat( collect(map(k,sites) for k ∈ kernels )... )
-
-    # P-matrix, N_d × Q columns
-    Q = length(polys)
-    P = transpose( hcat( collect( map(polys, sites) )... ) )
-
+    Φ = transpose( hcat( map(kernels, sites)... ) )   # N_d × N_c
+    P = transpose( hcat( map(polys, sites)... ) )       # N_d × Q
     # system matrix S and right hand side
     S = [Φ P]
     RHS = transpose( hcat(values... ) );
 
-    if N_d == N_c   # Interpolation
-        Z = ST &lt;: StaticArray ? @SMatrix(zeros(Int, Q, Q )) : zeros(Int, Q, Q)
-        padding = VT &lt;: StaticArray ? @SMatrix(zeros(Int, Q, n_out)) : zeros(Int, Q, n_out)
-        S = vcat( S, [P&#39; Z])
-        RHS = vcat( RHS, padding )
-    end
-    # solve system
-    coeff = S \ RHS
 
-    # return w and λ
-    return coeff[1 : N_c, :], coeff[N_c+1 : end, :], S, RHS
-end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.coefficients</pre><p>We can easily impose linear equality constraints, for example requiring interpolation only on a subset of features. In matrix form, <span>$I$</span> linear equality constraints (for <span>$k$</span> outputs) can be written as</p><p class="math-container">\[E c = b, \quad E ∈ ℝ^{I×(N_c + Q)}, b ∈ ℝ^{I\times k},\, I,k ∈ ℕ_0.\]</p><p>Now, let <span>$ĉ$</span> be the least squares solution from above. The constrained solution is</p><p class="math-container">\[ c = ĉ - Ψ E^T ( E Ψ E^T)^{-1} ( E ĉ - b ), \; Ψ := (S^T S)^{-1}
+    return _coefficients( Φ, P, S, RHS, Val(:ls) )
+end
+
+function _coeff_matrices(coeff :: AbstractMatrix, S, RHS, N_c, Q )
+    return view(coeff, 1 : N_c, :), view(coeff, N_c + 1 : N_c + Q, :), S, RHS
+end
+
+function _coeff_matrices(coeff :: StaticMatrix, S, RHS, N_c, Q )
+    return coeff[ SVector{N_c}(1 : N_c), :], coeff[ SVector{Q}( N_c + 1 : N_c + Q ), :], S, RHS
+end
+
+function _coefficients( Φ, P, S, RHS, ::Val{:ls} )
+    N_c = size(Φ,2); Q = size(P,2);
+    coeff = S \ RHS
+    return _coeff_matrices(coeff, S, RHS, N_c, Q )
+end
+
+function _coefficients( Φ, P, S, RHS, ::Val{:interpolation} )
+    N_d, N_c = size(Φ); Q = size(P,2);
+    @assert N_d == N_c &quot;Interpolation requires same number of features and centers.&quot; # TODO remove assertion
+    S̃ = [ S ;                               # N_d × (N_c + Q)
+          P&#39; zeros(eltype(S), Q, Q )]       # Q × N_d and Q × Q
+    RHS_padded = [ RHS;
+        zeros( eltype(RHS), Q, size(RHS,2) ) ];
+    coeff = S̃ \ RHS_padded
+    return _coeff_matrices( coeff, S̃, RHS_padded, N_c, Q )
+end
+
+ function _coefficients( Φ, P, S :: StaticMatrix, RHS :: StaticMatrix, ::Val{:interpolation} )
+    N_d, N_c = size(Φ); Q = size(P,2);
+    @assert N_d == N_c &quot;Interpolation requires same number of features and centers.&quot; # TODO remove assertion
+
+    S̃ = [S ;
+         P&#39; @SMatrix(zeros(eltype(S),Q,Q)) ];
+    RHS_padded = [ RHS;
+        @SMatrix(zeros(eltype(RHS), Q ,size(RHS,2)))];
+    coeff = S̃ \ RHS_padded
+    return _coeff_matrices( coeff, S̃, RHS_padded, N_c, Q )
+end</code></pre><pre class="documenter-example-output">_coefficients (generic function with 3 methods)</pre><p>We can easily impose linear equality constraints, for example requiring interpolation only on a subset of features. In matrix form, <span>$I$</span> linear equality constraints (for <span>$k$</span> outputs) can be written as</p><p class="math-container">\[E c = b, \quad E ∈ ℝ^{I×(N_c + Q)}, b ∈ ℝ^{I\times k},\, I,k ∈ ℕ_0.\]</p><p>Now, let <span>$ĉ$</span> be the least squares solution from above. The constrained solution is</p><p class="math-container">\[ c = ĉ - Ψ E^T ( E Ψ E^T)^{-1} ( E ĉ - b ), \; Ψ := (S^T S)^{-1}
 \tag{CLS1}
 \label{eqn:cls1}\]</p><p>This results from forming the Lagrangian of an equivalent minimization problem. Let <span>$δ = ĉ - c ∈ ℝ^{q\times k}, q = N_c + Q,$</span> and define the constraint residuals as <span>$γ = Eĉ - b ∈ ℝ^{I\times k}$</span>. The Lagrangian for minimizing <span>$δ^TS^TSδ$</span> under <span>$Eδ=γ$</span> is</p><p class="math-container">\[\begin{aligned}
     L &amp;= δ^T S^T S δ + 2 λ^T( E δ - γ )\\
@@ -631,17 +640,11 @@ end</code></pre><pre class="documenter-example-output">constrained_coefficients 
     E = S[interpolation_indices, :]
     b = RHS_ls[interpolation_indices, :]
     return constrained_coefficients( w, λ, S, E, b )
-end</code></pre><pre class="documenter-example-output">constrained_coefficients (generic function with 2 methods)</pre><h3 id="The-Actual,-Usable-Constructor"><a class="docs-heading-anchor" href="#The-Actual,-Usable-Constructor">The Actual, Usable Constructor</a><a id="The-Actual,-Usable-Constructor-1"></a><a class="docs-heading-anchor-permalink" href="#The-Actual,-Usable-Constructor" title="Permalink"></a></h3><p>We want the user to be able to pass 1D data as scalars and use the following helpers:</p><pre><code class="language-julia">function ensure_vec_of_vecs( before :: AbstractVector{&lt;:AbstractVector} )
-   return before
-end
-
-Base.vec( x :: T ) where T&lt;:Real = SVector{1,T}(x)
-function ensure_vec_of_vecs( before :: AbstractVector{ &lt;:Real } )
-    return( [vec(x) for x ∈ before ] )
-end
+end</code></pre><pre class="documenter-example-output">constrained_coefficients (generic function with 2 methods)</pre><h3 id="The-Actual,-Usable-Constructor"><a class="docs-heading-anchor" href="#The-Actual,-Usable-Constructor">The Actual, Usable Constructor</a><a id="The-Actual,-Usable-Constructor-1"></a><a class="docs-heading-anchor-permalink" href="#The-Actual,-Usable-Constructor" title="Permalink"></a></h3><p>We want the user to be able to pass 1D data as scalars and use the following helpers:</p><pre><code class="language-julia">ensure_vec_of_vecs( before :: AbstractVector{&lt;:AbstractVector{&lt;:Real}} ) = before
+ensure_vec_of_vecs( before :: AbstractVector{ &lt;:Real }) = [[x,] for x in before ]
 
 function inner_type( vec_of_vecs :: AbstractVector{&lt;:AbstractVector{T}}) where T
-    if Base.isabstracttype(T)
+    if Base.isabstracttype(T)   # like Any if data is of mixed precision
         return Float64
     else
         return T
@@ -654,39 +657,7 @@ end
 &quot;Return array of `ShiftedKernel`s based function `φ` with centers from `centers`.&quot;
 function make_kernels( φ :: RadialFunction, centers :: VecOfVecs )
     [ ShiftedKernel(φ, c) for c ∈ centers ]
-end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.make_kernels</pre><p>We use these methods to construct the RBFSum of a model. Note, the name is <code>get_RBFSum</code> to not run into infinite recursion with the default constructor. For small dimensions, we want to use an SMatrix, with the idea being to save time in successive evaluations, even if the construction takes a bit longer.</p><pre><code class="language-julia">function get_RBFSum( kernels :: AbstractVector{&lt;:ShiftedKernel}, weights :: AbstractMatrix{&lt;:Real};
-        static_arrays :: Bool = true
-    )
-    num_outputs, num_centers = size(weights)
-
-    # Sized Matrix?
-    make_static = !isa(weights, StaticArray) &amp;&amp; num_centers * num_outputs &lt; 100
-    wmat = begin
-        if static_arrays &amp;&amp; make_static
-            SMatrix{num_outputs, num_centers}(weights)
-        else
-            weights
-        end
-    end
-
-    RBFSum( kernels, wmat, num_outputs )
-end</code></pre><pre class="documenter-example-output">get_RBFSum (generic function with 1 method)</pre><p>Use a similar constuctor for the polynomial sum:</p><pre><code class="language-julia">function get_PolySum( polys :: Union{EmptyPolySystem, PolynomialSystem}, weights :: AbstractMatrix{&lt;:Real};
-        static_arrays :: Bool = true
-    )
-    num_outputs, num_regressors = size(weights)
-
-    # Sized Matrix?
-    make_static = !isa(weights, StaticArray) &amp;&amp; num_regressors * num_outputs &lt; 100
-    wmat = begin
-        if static_arrays &amp;&amp; make_static
-            SMatrix{num_outputs, num_regressors}(weights)
-        else
-            weights
-        end
-    end
-
-    PolySum( polys, wmat )
-end</code></pre><pre class="documenter-example-output">get_PolySum (generic function with 1 method)</pre><p>We now have all ingredients for the basic outer constructor:</p><pre><code class="language-julia">@doc &quot;&quot;&quot;
+end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.make_kernels</pre><p>We now have all ingredients for the basic outer constructor:</p><pre><code class="language-julia">@doc &quot;&quot;&quot;
     RBFModel( features, labels, φ = Multiquadric(), poly_deg = 1; kwargs ... )
 
 Construct a `RBFModel` from the feature vectors in `features` and
@@ -711,7 +682,7 @@ function RBFModel(
         centers :: AbstractVector{ &lt;:NumberOrVector } = Vector{Float16}[],
         interpolation_indices :: AbstractVector{ &lt;: Int } = Int[],
         vector_output :: Bool = true,
-        static_arrays :: Bool = true
+        coeff_mode :: Symbol = :auto
     )
 
     # Basic Data integrity checks
@@ -722,36 +693,43 @@ function RBFModel(
     @assert all( length(s) == num_vars for s ∈ features ) &quot;All features must have same dimension.&quot;
     @assert all( length(v) == num_outputs for v ∈ labels ) &quot;All labels must have same dimension.&quot;
 
-    if !isempty(centers)
-        C = centers
-        @assert all( length(s) == num_vars for s ∈ centers ) &quot;All centers must have dimension $(num_vars).&quot;
-    else
-        C = copy(features)
-    end
-    num_centers = length(C)
+    num_sites = length(features)
+    num_vals = length(labels)
+    @assert num_sites == num_vals &quot;Provide as many features as labels.&quot;
 
     sites = ensure_vec_of_vecs(features)
     values = ensure_vec_of_vecs(labels)
-    c̃enters = ensure_vec_of_vecs(C)
+    if !isempty(centers)
+        @assert all( length(c) == num_vars for c ∈ centers ) &quot;All centers must have dimension $(num_vars).&quot;
+        C = ensure_vec_of_vecs(centers)
+    else
+        C = copy(sites)
+    end
+    num_centers = length(C)
 
-    # TODO benchmark whether array format makes some difference?
-    # centers &lt;: SVector{&lt;:SVector} or Vector{&lt;:SVector} or Vector{&lt;:Vector} makes a difference
-    kernels = make_kernels(φ, c̃enters)
+    kernels = make_kernels(φ, C)
 
     poly_precision = promote_type(Float16, inner_type(sites))
-    poly_deg = max( poly_deg, cpd_order(φ) - 1 , -1 )
-    poly_basis_sys = canonical_basis( num_vars, poly_deg, poly_precision )
+    poly_basis_sys = Zyg.ignore() do
+        canonical_basis( num_vars, poly_deg, poly_precision )
+    end
 
-    w, λ, S, RHS = coefficients( sites, values, kernels, poly_basis_sys )
+    if coeff_mode == :auto
+        can_interpolate_uniquely = φ isa RadialFunction ? poly_deg &gt;= cpd_order(φ) - 1 : all( poly_deg &gt;= cpd_order(phi) - 1 for phi in φ )
+        coeff_mode = num_sites == num_centers &amp;&amp; can_interpolate_uniquely ? :interpolation : :ls
+    end
+
+    w, λ, S, RHS = coefficients( sites, values, kernels, poly_basis_sys; mode = coeff_mode )
 
     if !isempty(interpolation_indices)
         w, λ = constrained_coefficients( w, λ, S, RHS, interpolation_indices)
     end
+
     # build output polynomials
-    poly_sum = get_PolySum( poly_basis_sys, transpose(λ) )
+    poly_sum = PolySum( poly_basis_sys, transpose(λ) )
 
     # build RBF system
-    rbf_sys = get_RBFSum(kernels, transpose(w); static_arrays)
+    rbf_sys = RBFSum(kernels, transpose(w), num_outputs)
 
     # vector output? (dismiss user choice if labels are vectors)
     vec_output = num_outputs == 1 ? vector_output : true
@@ -759,9 +737,7 @@ function RBFModel(
     return RBFModel{vec_output, typeof(rbf_sys), typeof(poly_sum)}(
          rbf_sys, poly_sum, num_vars, num_outputs, num_centers
     )
-end
-
-### Special Constructors</code></pre><p>We offer some specialized models (that simply wrap the main type).</p><pre><code class="language-julia">struct RBFInterpolationModel
+end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.RBFModel</pre><h3 id="Special-Constructors"><a class="docs-heading-anchor" href="#Special-Constructors">Special Constructors</a><a id="Special-Constructors-1"></a><a class="docs-heading-anchor-permalink" href="#Special-Constructors" title="Permalink"></a></h3><p>We offer some specialized models (that simply wrap the main type).</p><pre><code class="language-julia">struct RBFInterpolationModel
     model :: RBFModel
 end
 (mod :: RBFInterpolationModel)(args...) = mod.model(args...)
@@ -777,10 +753,15 @@ function RBFInterpolationModel(
         φ :: Union{RadialFunction,AbstractVector{&lt;:RadialFunction}} = Multiquadric(),
         poly_deg :: Int = 1;
         vector_output :: Bool = true,
-        static_arrays :: Bool = true
     )
     @assert length(features) == length(labels) &quot;Provide as many features as labels!&quot;
-    mod = RBFModel(features, labels, φ, poly_deg; vector_output, static_arrays)
+
+    if poly_deg &lt; cpd_order(φ) - 1
+        @warn &quot;Polyonmial degree too small for interpolation. Using $(cpd_order(φ)-1).&quot;
+        poly_deg = max( poly_deg,  cpd_order(φ) - 1 )
+    end
+
+    mod = RBFModel(features, labels, φ, poly_deg; vector_output, coeff_mode = :interpolation)
     return RBFInterpolationModel( mod )
 end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.RBFInterpolationModel</pre><p>We want to provide a convenient alternative constructor for interpolation models so that the radial function can be defined by passing a <code>Symbol</code> or <code>String</code>.</p><pre><code class="language-julia">const SymbolToRadialConstructor = NamedTuple((
     :gaussian =&gt; Gaussian,
@@ -790,7 +771,8 @@ end</code></pre><pre class="documenter-example-output">Main.__atexample__named__
     :thin_plate_spline =&gt; ThinPlateSpline
 ))
 
-function _get_constructor( φ_symb :: Union{Symbol, String}, φ_args :: Union{Nothing, Tuple} )
+&quot;Obtain a `RadialFunction` from its name and constructor arguments.&quot;
+function _get_rad_func( φ_symb :: Union{Symbol, String}, φ_args )
 
     # which radial function to use?
     radial_symb = Symbol( lowercase( string( φ_symb ) ) )
@@ -800,27 +782,112 @@ function _get_constructor( φ_symb :: Union{Symbol, String}, φ_args :: Union{No
     end
 
     constructor = SymbolToRadialConstructor[radial_symb]
-    if φ_args isa Tuple
-        φ = constructor( φ_args... )
-    else
+    if isnothing(φ_args)
         φ = constructor()
+    else
+        φ = constructor( φ_args... )
     end
 
     return φ
-end
-
-for op ∈ [ :RBFInterpolationModel, :RBFModel ]
+end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels._get_rad_func</pre><p>The alternative constructors are build programmatically:</p><pre><code class="language-julia">for op ∈ [ :RBFInterpolationModel, :RBFModel ]
     @eval begin
         function $op(
                 features :: AbstractVector{ &lt;:NumberOrVector },
                 labels :: AbstractVector{ &lt;:NumberOrVector },
                 φ_symb :: Union{Symbol, String},
-                φ_args :: Union{Nothing, Tuple} = nothing,
+                φ_args = nothing,
                 poly_deg :: Int = 1; kwargs...
             )
 
-            φ = _get_constructor( φ_symb, φ_args )
+            φ = _get_rad_func( φ_symb, φ_args )
             return $op(features, labels, φ, poly_deg; kwargs... )
         end
     end
-end</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-wild_diss"><a class="tag is-link" href="#citeref-wild_diss">wild_diss</a>“Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.</li><li class="footnote" id="footnote-wendland"><a class="tag is-link" href="#citeref-wendland">wendland</a>“Scattered Data Approximation”, Wendland</li><li class="footnote" id="footnote-adv_eco"><a class="tag is-link" href="#citeref-adv_eco">adv_eco</a>“Advanced Econometrics“, Takeshi Amemiya</li></ul></section></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 15 June 2021 06:54">Tuesday 15 June 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+end</code></pre><h3 id="Container-with-Training-Data"><a class="docs-heading-anchor" href="#Container-with-Training-Data">Container with Training Data</a><a id="Container-with-Training-Data-1"></a><a class="docs-heading-anchor-permalink" href="#Container-with-Training-Data" title="Permalink"></a></h3><p>The RBF Machine is similar in design to what an MLJ machine does: Training data (feature and label <strong>vectors</strong>) are stored and can be added. The inner model is trained with <code>fit!</code>.</p><p><strong>TODO</strong> In the future, we can customize the <code>fit!</code> method when updating a model to only consider <em>new</em> training data. This also makes type conversion of the whole data arrays unnecessary.</p><pre><code class="language-julia">&quot;&quot;&quot;
+    RBFMachine(; features = Vector{Float64}[], labels = Vector{Float64}[],
+    kernel_name = :gaussian, kernel_args = nothing, poly_deg = 1)
+
+A container holding an inner `model :: RBFModel` (or `model == nothing`).
+An array of arrays of features is stored in the `features` field.
+Likewise for `labels`.
+The model is trained with `fit!` and can then be evaluated.
+&quot;&quot;&quot;
+@with_kw mutable struct RBFMachine{
+        FT &lt;: AbstractVector{&lt;:AbstractVector{&lt;:AbstractFloat}},
+        LT &lt;: AbstractVector{&lt;:AbstractVector{&lt;:AbstractFloat}},
+    }
+    features :: FT = Vector{Float64}[]
+    labels :: LT = Vector{Float64}[]
+    kernel_name :: Symbol = :gaussian
+    kernel_args :: Union{Nothing, Vector{Float64}} = nothing
+    poly_deg :: Int = 1
+
+    model :: Union{Nothing,RBFModel} = nothing
+    valid :: Bool = false   # is model trained on all data sites?
+
+    @assert let T = eltype( Base.promote_eltype(FT, LT) ),
+        K = isnothing(kernel_args) ? nothing : T.(kernel_args),
+        φ = _get_rad_func( kernel_name, K );
+        poly_deg &gt;= cpd_order(φ) - 1
+    end &quot;Polynomial degree too low for interpolation.&quot;
+end
+
+&quot;Return floating point type of training data elements.&quot;
+_precision( :: RBFMachine{FT,LT} ) where {FT,LT} = eltype( Base.promote_eltype(FT, LT) )
+
+&quot;Return kernel arguments converted to minimum required precision.&quot;
+function _kernel_args( mach :: RBFMachine )
+    if isnothing( mach.kernel_args )
+        return mach.kernel_args
+    else
+        T = promote_type( Float16, _precision(mach) )
+        return T.(mach.kernel_args)
+    end
+end
+
+&quot;Fit `mach :: RBFMachine` to the training data.&quot;
+function fit!( mach :: RBFMachine )::Nothing
+    @assert length(mach.features) &gt; 0 &quot;Provide at least one data sample.&quot;
+    num_needed =  binomial( mach.poly_deg + length(mach.features[1]), mach.poly_deg)
+    @assert length(mach.features) &gt;= num_needed &quot;Too few data sites for selected polynomial degree (need $(num_needed)).&quot;
+
+    inner_model = RBFModel(
+        mach.features,
+        mach.labels,
+        mach.kernel_name,
+        _kernel_args(mach),
+        mach.poly_deg
+    )
+    mach.model = inner_model
+    mach.valid = true
+    return nothing
+end</code></pre><pre class="documenter-example-output">Main.__atexample__named__RadialBasisFunctionModels.fit!</pre><p>Forward evaluation methods of inner model:</p><pre><code class="language-julia">( mach :: RBFMachine )(args...) = mach.model(args...)
+@forward RBFMachine.model grad, jac, jacT, auto_grad, auto_jac</code></pre><p>Methods to add features and labels:</p><pre><code class="language-julia">&quot;Add a feature vector(s) and a label(s) to the `machine` container.&quot;
+function add_data!(
+        m :: RBFMachine, features :: AbstractVector{&lt;:AbstractVector}, labels :: AbstractVector{&lt;:AbstractVector}
+    ) :: Nothing
+    @assert length(features) == length(labels) &quot;Provide same number of features and labels.&quot;
+    @assert all( length(f) == length(features[1]) for f in features ) &quot;Features must have same length.&quot;
+    @assert all( length(l) == length(labels[1]) for l in labels ) &quot;Labels must have same length&quot;
+    @assert isempty(m.features) || length(m.features[1]) == length(features[1]) &amp;&amp; length(m.labels[1]) == length(labels[1]) &quot;Length doesnt match previous data.&quot;
+    append!(m.features, features)
+    append!(m.labels, labels)
+    m.valid = false
+    return nothing
+end
+
+function add_data!(
+        m :: RBFMachine, feature :: AbstractVector{&lt;:AbstractFloat}, label:: AbstractVector{&lt;:AbstractFloat}
+    ) :: Nothing
+    return add_data!(m, [ feature, ], [label, ])
+end</code></pre><pre class="documenter-example-output">add_data! (generic function with 2 methods)</pre><p>Convenience methods to &quot;reset&quot; a machine:</p><pre><code class="language-julia">function Base.empty!( m :: RBFMachine ) :: Nothing
+    empty!(m.features)
+    empty!(m.labels)
+    m.model = nothing
+    m.valid = false
+    return nothing
+end
+
+function Base.isempty(m :: RBFMachine ) :: Bool
+    isempty( m.features ) &amp;&amp; isempty( m.labels ) &amp;&amp; isnothing(m.model)
+end</code></pre><pre><code class="language-">include(&quot;mlj_interface.jl&quot;)</code></pre><hr/><p><em>This page was generated using <a href="https://github.com/fredrikekre/Literate.jl">Literate.jl</a>.</em></p><section class="footnotes is-size-7"><ul><li class="footnote" id="footnote-wild_diss"><a class="tag is-link" href="#citeref-wild_diss">wild_diss</a>“Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.</li><li class="footnote" id="footnote-wendland"><a class="tag is-link" href="#citeref-wendland">wendland</a>“Scattered Data Approximation”, Wendland</li><li class="footnote" id="footnote-adv_eco"><a class="tag is-link" href="#citeref-adv_eco">adv_eco</a>“Advanced Econometrics“, Takeshi Amemiya</li></ul></section></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Friday 25 June 2021 15:42">Friday 25 June 2021</span>. Using Julia version 1.6.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
