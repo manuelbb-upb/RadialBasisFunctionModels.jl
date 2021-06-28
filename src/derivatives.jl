@@ -114,24 +114,13 @@ function _grad( mod :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
     return grad(mod.rbf, x, ℓ) + grad( mod.psum, x, ℓ )
 end
 
-function grad( mod :: RBFModel, x :: Vector{<:Real}, ℓ :: Int = 1 )
-    G = _grad(mod, x, ℓ)
-    
-    if G isa Vector
-        return G
-    else
-        return [ G.data... ]
-    end
+function grad( mod :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
+    return _grad(mod, x, ℓ)
 end
 
-function grad( mod :: RBFModel, x :: StaticVector{T, R} where{T, R<:Real}, ℓ :: Int = 1 )
-    G = _grad(mod, x, ℓ)
-    
-    if G isa StaticArray
-        return G
-    else
-        return SizedVector{mod.num_vars}(G)
-    end
+grad( mod :: RBFModel, x :: Vector{<:Real}, ℓ :: Int = 1 ) = _type_guard( _grad(mod, x, ℓ), Vector, mod.num_vars )
+function grad( mod :: RBFModel, x :: T, ℓ :: Int = 1 ) where T <: Union{SVector, MVector, SizedVector}
+    return _type_guard( _grad(mod, x, ℓ), T, mod.num_vars )
 end
 
 # We can exploit our custom evaluation methods for "distances": 
@@ -160,7 +149,7 @@ end
 function eval_and_grad( mod :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int = 1 )
     res_rbf, g_rbf = eval_and_grad( mod.rbf, x, ℓ )
     res_polys, g_polys = eval_and_grad( mod.psum, x, ℓ )
-    return res_rbf + res_polys, g_rbf + g_polys
+    return res_rbf .+ res_polys, g_rbf .+ g_polys
 end
 
 # For the jacobian, we use the same trick to save evaluations.
@@ -178,18 +167,11 @@ function _jac( mod :: RBFModel, x :: AbstractVector{<:Real} )
     jac( mod.rbf, x ) + jac( mod.psum, x)
 end
 
-function jac( mod :: RBFModel, x :: Vector{R}) where R<:Real
-    Matrix( _jac(mod, x) )
-end
-
-function jac( mod :: RBFModel, x :: StaticVector{T, R} ) where{T, R<:Real}
-    J = _jac(mod, x)
-    if J isa StaticArray 
-        return J 
-    else
-        return SizedMatrix{mod.num_outputs, mod.num_vars}(J)
-    end 
-end
+jac( mod :: RBFModel, x :: AbstractMatrix{<:Real} ) = _jac(mod,x)
+jac( mod :: RBFModel, x :: Vector{<:Real}) = convert(Matrix, _jac(mod,x))
+jac( mod :: RBFModel, x :: SVector{<:Real}) = convert( SMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x) )
+jac( mod :: RBFModel, x :: MVector{<:Real}) = convert( MMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x) )
+jac( mod :: RBFModel, x :: SizedVector{<:Real}) = convert( SizedMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x) )
 
 # As before, define an "evaluate-and-jacobian" function that saves evaluations:
 function eval_and_jac( rbf :: RBFSum, x :: AbstractVector{<:Real} )
@@ -209,6 +191,8 @@ function eval_and_jac( mod :: RBFModel, x :: AbstractVector{<:Real} )
     res_polys, J_polys = eval_and_jac( mod.psum, x)
     return res_rbf + res_polys, J_rbf + J_polys 
 end
+
+## TODO type stable eval_and_grad and eval_and_jac ?
 
 # !!! note
 #     Hessians are not yet implemented.

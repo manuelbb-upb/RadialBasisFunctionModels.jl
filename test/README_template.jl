@@ -57,27 +57,80 @@ Z[1] isa AbstractVector{<:Real} #md
 rbf_scalar = RBFInterpolationModel( X, Y, φ, 1; vector_output = false)
 Z_scalar = rbf_scalar.( X )
 
-@test( #jl
+@test(#jl
 Z_scalar isa Vector{Float64}  
 )#jl
-@test( #jl 
+@test( #jl
 all( Z_scalar[i] == Z[i][1] for i = 1 : length(Z) ) 
 ) #jl
 
-# Also, the internal use of `StaticArrays` can be disabled:
-rbf_vec = RBFInterpolationModel( X, Y, φ, 1; static_arrays = false)
-
-# The return type of the evaluation function should be independent of that setting.
-# It rather depends on the input type.
-Xstatic = RadialBasisFunctionModels.SVector{1}(X[1])
-@test( #jl
-rbf_vec(Xstatic) isa RadialBasisFunctionModels.SVector && rbf_vec(X[1]) isa Vector
-) #jl
-
-# The data precision of the training data is preserved when evaluating.
+# The data precision of the training data is preserved when determining the model 
+# coefficients.
+# Accordingly, the return type precision is also at least that of the training data.
 X_f0 = Float32.(X)
 Y_f0 = f.(X_f0)
-rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 1; static_arrays = false ) 
-@test( #jl
+rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 1)
+@test(#jl
 rbf_f0.(X_f0) isa Vector{Vector{Float32}} 
 )#jl
+
+# If you are using statically sized arrays, they work too!
+# You can provide a vector of statically sized arrays or, if 
+# you have only few centers ( number of variables × number of centers <= 100),
+# provide a statically sized vector of statically sized vectors to maybe profit 
+# from faster matrix multiplications when evaluating:
+using StaticArrays
+features = [ @SVector(rand(3)) for i = 1 : 5 ]
+labels = [ @SVector(rand(3)) for i = 1 : 5 ]
+centers = SVector{5}(features)
+rbf_sized = RBFModel( features, labels; centers )
+
+# Now, model uses sized matrices internally. 
+# For most input vectors a `SizedVector` would be returned.
+# But there is a "type guarding" function for static arrays so that output has the same  
+# array type (by conversion, if necessary):
+x_vec = rand(3)
+x_s = SVector{3}(x_vec)
+x_m = MVector{3}(x_vec)
+x_sized = SizedVector{3}(x_vec)
+
+@test(#jl
+rbf_sized( x_vec ) isa Vector
+)#jl
+@test(#jl
+rbf_sized( x_s ) isa SVector
+)#jl
+@test(#jl
+rbf_sized( x_m ) isa MVector
+)#jl
+@test(#jl
+rbf_sized( x_sized ) isa SizedVector
+)#jl
+
+# ## Machines
+
+# There is an MLJ wrapper for the RBFInterpolationModel, exported as `RBFInterpolator`.
+# It can be used like other regressors and takes the kernel name as a symbol (and kernel arguments as a vector).
+
+using MLJBase
+X,y = @load_boston
+
+r = RBFInterpolator(; kernel_name = :multiquadric )
+R = machine(r, X, y)
+
+MLJBase.fit!(R)
+MLJBase.predict(R, X)
+
+# You can do similar things (for vector valued data) with the `RBFMachine`
+X = [ rand(2) for i = 1 : 10 ]
+Y = [ rand(2) for i = 1 : 10 ]
+
+R = RBFMachine(features = X, labels = Y, kernel_name = :gaussian )
+RadialBasisFunctionModels.fit!(R)
+@test(#jl
+R( X[1] ) ≈ Y[1]
+)#jl
+
+# Such a machine can be initialize empty and data can be added:
+R = RBFMachine()
+add_data!(R, X, Y)

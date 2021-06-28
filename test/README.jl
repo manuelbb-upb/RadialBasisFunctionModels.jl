@@ -23,26 +23,64 @@ Z = rbf.(X)
 rbf_scalar = RBFInterpolationModel( X, Y, φ, 1; vector_output = false)
 Z_scalar = rbf_scalar.( X )
 
-@test(
+@test(#jl
 Z_scalar isa Vector{Float64}
 )#jl
-@test( #jl
-all( Z_scalar[i] == Z[i][1] for i = 1 : length(Z) )
-)
-
-rbf_vec = RBFInterpolationModel( X, Y, φ, 1; static_arrays = false)
-
-Xstatic = RadialBasisFunctionModels.SVector{1}(X[1])
 @test(
-rbf_vec(Xstatic) isa RadialBasisFunctionModels.SVector && rbf_vec(X[1]) isa Vector
+all( Z_scalar[i] == Z[i][1] for i = 1 : length(Z) )
 )
 
 X_f0 = Float32.(X)
 Y_f0 = f.(X_f0)
-rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 1; static_arrays = false )
-@test(
+rbf_f0 = RBFInterpolationModel( X_f0, Y_f0, φ, 1)
+@test(#jl
 rbf_f0.(X_f0) isa Vector{Vector{Float32}}
 )#jl
+
+using StaticArrays
+features = [ @SVector(rand(3)) for i = 1 : 5 ]
+labels = [ @SVector(rand(3)) for i = 1 : 5 ]
+centers = SVector{5}(features)
+rbf_sized = RBFModel( features, labels; centers )
+
+x_vec = rand(3)
+x_s = SVector{3}(x_vec)
+x_m = MVector{3}(x_vec)
+x_sized = SizedVector{3}(x_vec)
+
+@test(#jl
+rbf_sized( x_vec ) isa Vector
+)#jl
+@test(#jl
+rbf_sized( x_s ) isa SVector
+)#jl
+@test(#jl
+rbf_sized( x_m ) isa MVector
+)#jl
+@test(#jl
+rbf_sized( x_sized ) isa SizedVector
+)#jl
+
+using MLJBase
+X,y = @load_boston
+
+r = RBFInterpolator(; kernel_name = :multiquadric )
+R = machine(r, X, y)
+
+MLJBase.fit!(R)
+MLJBase.predict(R, X)
+
+X = [ rand(2) for i = 1 : 10 ]
+Y = [ rand(2) for i = 1 : 10 ]
+
+R = RBFMachine(features = X, labels = Y, kernel_name = :gaussian )
+RadialBasisFunctionModels.fit!(R)
+@test(#jl
+R( X[1] ) ≈ Y[1]
+)#jl
+
+R = RBFMachine()
+add_data!(R, X, Y)
 
 # This file was generated using Literate.jl, https://github.com/fredrikekre/Literate.jl
 

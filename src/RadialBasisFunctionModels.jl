@@ -1,7 +1,11 @@
 module RadialBasisFunctionModels #src
 
+using Base: NamedTuple, promote_eltype
 export RBFModel, RBFInterpolationModel #src
 export Multiquadric, InverseMultiquadric, Gaussian, Cubic, ThinPlateSpline #src
+
+export RBFInterpolator
+export RBFMachine, fit!, add_data!
 
 export auto_grad, auto_jac, grad, jac, eval_and_auto_grad
 export eval_and_auto_jac, eval_and_grad, eval_and_jac
@@ -13,6 +17,13 @@ using Memoization: @memoize
 using StaticArrays
 using LinearAlgebra: norm
 using Lazy: @forward
+using Parameters: @with_kw
+
+# We define evaluation functions, so that the right type is returned by `polys`. #src
+for V in [:SizedVector, :MVector]
+    @eval Base.@propagate_inbounds StaticPolynomials.evaluate( F :: PolynomialSystem, x :: $V ) = $V( StaticPolynomials._evaluate( F, x ) ) #src
+    @eval Base.@propagate_inbounds StaticPolynomials.evaluate( F :: PolynomialSystem, x :: $V , p) = $V( StaticPolynomials._evaluate( F, x , p) ) #src
+end
 
 import Zygote as Zyg
 using Zygote: Buffer
@@ -21,7 +32,7 @@ using Zygote: Buffer
 
 # # Radial Basis Function Models 
 
-# The sub-module `RadialBasisFunctionModels` provides utilities to work with radial 
+# The module `RadialBasisFunctionModels` provides utilities to work with radial 
 # basis function [RBF] models.  
 # Given ``N`` data sites ``X = \{ x^1, …, x^N \} ⊂ ℝ^n`` and values 
 # ``Y = \{ y^1, …, y^N \} ⊂ ℝ``, an interpolating RBF model ``r\colon ℝ^n → ℝ`` 
@@ -75,14 +86,15 @@ norm2( vec ) = norm(vec, 2)
 
 "Evaluate kernel `k` at `x - k.c`."
 function (k::ShiftedKernel)( x :: AbstractVector{<:Real} )
-    return k.φ( norm2( x - k.c ) )
+    return k.φ( norm2( x .- k.c ) )
 end
 
 # A vector of ``N`` kernels is a mapping ``ℝ^n → ℝ^N, \ x ↦ [ k₁(x), …, k_N(x)] ``.
+
+_eval_vec_of_kernels( K, x ) = [k(x) for k ∈ K]
+
 "Evaluate ``x ↦ [ k₁(x), …, k_{N_c}(x)]`` at `x`."
-function ( K::AbstractVector{<:ShiftedKernel})( x :: AbstractVector{<:Real} )
-    [ k(x) for k ∈ K ]
-end
+( K::AbstractVector{<:ShiftedKernel})( x ) = _eval_vec_of_kernels( K, x )
 
 # Suppose, we have calculated the distances ``\|x - x^i\|`` beforehand.
 # We can save redundant effort by passing them to the radial functions of the kernels.
@@ -124,20 +136,26 @@ function Base.show( io :: IO, rbf :: RBFSum{KT,WT} ) where {KT, WT}
 end
 
 # We can easily evaluate the `ℓ`-th output of the `RBFPart`:
-## @doc "Evaluate output `ℓ` of RBF sum `rbf::RBFSum`"
-function (rbf :: RBFSum)(x :: VT, ℓ :: Int) where VT <: AbstractVector{<:Real}
-    (rbf.weights[ℓ,:]'rbf.kernels(x))[1]
+@doc "Evaluate outut `ℓ` of RBF sum `rbf::RBFSum`"
+function (rbf :: RBFSum)(x :: AbstractVector, ℓ :: Int)
+    return (rbf.weights[ℓ,:]'rbf.kernels(x))[1]
 end
 
 # The overall output is a vector, and we also get it via matrix multiplication.
-# First, define helpers so that the right type is returned:
-## TODO I am not sure how to handle precision here. #src
-type_guard( T :: Type{<:Vector}, x :: AbstractVector{<:Real}, :: Int ) = convert( T, x )
-type_guard( :: Type{<:SVector}, x :: AbstractVector, n_out :: Int) = SVector{n_out}(x)
-type_guard( :: Type{<:SizedVector}, x :: AbstractVector, n_out :: Int) = SizedVector{n_out}(x)
+_eval_rbfsum(rbf::RBFSum, x ) = rbf.weights*rbf.kernels(x)
+"Evaluate `rbf::RBFSum` at `x`."
+(rbf :: RBFSum)( x :: AbstractVector ) = _eval_rbfsum(rbf, x)
 
-## @doc "Evaluate `rbf::RBFSum` at `x`."
-(rbf :: RBFSum)( x :: VT ) where VT <: AbstractVector{<:Real} = type_guard( VT, rbf.weights*rbf.kernels(x), rbf.num_outputs )
+# We want to return the right type and use `_type_guard`:
+_type_guard( x , :: Type{<:Vector}, :: Int ) = convert( Vector, x)
+for V in [:SVector, :MVector, :SizedVector ]
+    @eval _type_guard( x, ::Type{ <: $V }, n_out :: Int ) = convert($V{ n_out }, x)
+end
+
+(rbf :: RBFSum)( x :: Vector ) = _type_guard( _eval_rbfsum(rbf, x), Vector, rbf.num_outputs )
+function (rbf :: RBFSum)( x :: T ) where T<:Union{SVector,MVector,SizedVector} 
+    return _type_guard( _eval_rbfsum(rbf, x), T, rbf.num_outputs ) 
+end
 
 # As before, we allow to pass precalculated distance vectors:
 function eval_at_dist( rbf::RBFSum, dists :: AbstractVector{<:Real}, ℓ :: Int ) 
@@ -169,8 +187,12 @@ struct PolySum{
     end
 end
 
-(p :: PolySum)(x :: VT) where VT <: AbstractVector{<:Real} = type_guard( VT, p.weights*p.polys(x), p.num_outputs)
-(p :: PolySum)(x :: AbstractVector{<:Real},ℓ::Int) = (p.weights[ℓ,:]'p.polys(x))[end]
+eval_psum( p :: PolySum, x ) = p.weights * p.polys(x)
+(p :: PolySum)(x :: AbstractVector ) = eval_psum( p, x )
+(p :: PolySum)(x :: Vector ) = _type_guard(eval_psum(p,x), Vector, p.num_outputs )
+(p :: PolySum)(x :: T) where T<:Union{SVector,MVector,SizedVector} = _type_guard( eval_psum(p,x), T, p.num_outputs)
+
+(p :: PolySum)(x,ℓ::Int) = (p.weights[ℓ,:]'p.polys(x))[end]
 
 # We now have all ingredients to define the model type.
 
@@ -213,7 +235,7 @@ end
 # Evaluation is easy. We accept an additional `::Nothing` argument that does nothing 
 # for now, but saves some typing later.
 function vec_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing)
-    return mod.rbf(x) + mod.psum( x )
+    return mod.rbf(x) .+ mod.psum( x )
 end
 
 function scalar_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing )
@@ -239,7 +261,8 @@ end
 
 include("derivatives.jl")
 include("constructors.jl")
-
+#-
+include("mlj_interface.jl")
 # [^wild_diss]: “Derivative-Free Optimization Algorithms For Computationally Expensive Functions”, Wild, 2009.
 # [^wendland]: “Scattered Data Approximation”, Wendland
 # [^adv_eco]: “Advanced Econometrics“, Takeshi Amemiya
