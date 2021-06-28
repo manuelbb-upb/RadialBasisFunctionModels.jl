@@ -1282,6 +1282,7 @@ function _get_rad_func( φ_symb :: Union{Symbol, String}, φ_args )
     if !(radial_symb ∈ keys(SymbolToRadialConstructor))
         @warn "Radial Funtion $(radial_symb) not known, using Gaussian."
         radial_symb = :gaussian
+        φ_args = nothing
     end
 
     constructor = SymbolToRadialConstructor[radial_symb]

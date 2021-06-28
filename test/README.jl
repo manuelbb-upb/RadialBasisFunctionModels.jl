@@ -61,11 +61,9 @@ rbf_sized( x_m ) isa MVector
 rbf_sized( x_sized ) isa SizedVector
 )#jl
 
-#	:gaussian, :multiquadric, :inv_multiquadric, :cubic, :thin_plate_spline
-
 RBFModel(features, labels, :gaussian)
 
-RBFModel(features, labels, :mulitquadric, [1.0, 1//2])
+RBFModel(features, labels, :multiquadric, [1.0, 1//2])
 
 using MLJBase
 X,y = @load_boston

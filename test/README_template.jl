@@ -108,15 +108,17 @@ rbf_sized( x_sized ) isa SizedVector
 )#jl
 
 # ### Using Kernel Names 
+
 # Instead of initializing `RadialFunction`s beforehand,
 # their names can be used. Currently supported are:  
 # ```
-#	:gaussian, :multiquadric, :inv_multiquadric, :cubic, :thin_plate_spline
+# :gaussian, :multiquadric, :inv_multiquadric, :cubic, :thin_plate_spline
 # ```
+
 # You can do
 RBFModel(features, labels, :gaussian)
 # or, to specify kernel arguments:
-RBFModel(features, labels, :mulitquadric, [1.0, 1//2])
+RBFModel(features, labels, :multiquadric, [1.0, 1//2])
 
 # ## Machines
 
