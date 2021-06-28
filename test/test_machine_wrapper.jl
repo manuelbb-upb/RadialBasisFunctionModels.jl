@@ -48,7 +48,7 @@ end
 		RadialBasisFunctionModels.fit!(mach)
 
 		@test mach.valid
-		@test mach( mach.features[1] ) ≈ mach.labels[1]
+		T == Float16 || @test mach( mach.features[1] ) ≈ mach.labels[1]
 		@test mach( features[1] ) isa Vector{T}
 
 		for S in subtypes(AbstractFloat)
