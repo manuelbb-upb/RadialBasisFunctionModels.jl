@@ -111,7 +111,7 @@ centers = SVector{5}(features)
 rbf_sized = RBFModel( features, labels; centers )
 ````
 
-Now, model uses sized matrices internally.
+Now, the model uses sized matrices internally.
 For most input vectors a `SizedVector` would be returned.
 But there is a "type guarding" function for static arrays so that output has the same
 array type (by conversion, if necessary):
@@ -126,6 +126,28 @@ rbf_sized( x_vec ) isa Vector
 rbf_sized( x_s ) isa SVector
 rbf_sized( x_m ) isa MVector
 rbf_sized( x_sized ) isa SizedVector
+````
+
+### Using Kernel Names
+Instead of initializing `RadialFunction`s beforehand,
+their names can be used. Currently supported are:
+```
+
+````julia
+#	:gaussian, :multiquadric, :inv_multiquadric, :cubic, :thin_plate_spline
+````
+
+```
+You can do
+
+````julia
+RBFModel(features, labels, :gaussian)
+````
+
+or, to specify kernel arguments:
+
+````julia
+RBFModel(features, labels, :mulitquadric, [1.0, 1//2])
 ````
 
 ## Machines
