@@ -175,7 +175,7 @@ RadialBasisFunctionModels.fit!(R)
 R( X[1] ) ≈ Y[1]
 ```
 
-Such a machine can be initialize empty and data can be added:
+Such a machine can be initialized empty and data can be added:
 
 ```julia
 R = RBFMachine()
