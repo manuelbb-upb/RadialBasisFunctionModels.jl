@@ -7,7 +7,7 @@
 
 # Description
 This package provides Radial Basis Function (RBF) models with polynomial tails.
-RBF models are a special case of kernel machines can interpolate high-dimensional
+RBF models are a special case of kernel machines that can interpolate high-dimensional
 and nonlinear data.
 
 # Usage Examples
