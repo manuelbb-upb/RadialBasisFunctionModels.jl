@@ -134,11 +134,12 @@ R = machine(r, X, y)
 MLJBase.fit!(R)
 MLJBase.predict(R, X)
 
-# You can do similar things (for vector valued data) with the `RBFMachine`
+# You can do similar things (for vector valued data) with the `RBFMachineWithKernel`:
 X = [ rand(2) for i = 1 : 10 ]
 Y = [ rand(2) for i = 1 : 10 ]
 
-R = RBFMachine(features = X, labels = Y, kernel_name = :gaussian )
+R = RBFMachine(;features = X, labels = Y, kernel_name = :gaussian )
+R isa RBFMachineWithKernel
 RadialBasisFunctionModels.fit!(R)
 @test(#jl
 R( X[1] ) ≈ Y[1]

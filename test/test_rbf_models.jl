@@ -1,4 +1,3 @@
-using ForwardDiff: sqrt
 using Pkg
 current_env = Base.load_path()[1]
 Pkg.activate(@__DIR__)
@@ -66,7 +65,7 @@ end
 					aG = auto_grad(rbf, x, ℓ)
 					@test G isa Vector{T}
 					@test aG isa Vector{T}
-					T == Float16 || @test grad( rbf, x, ℓ ) ≈ ForwardDiff.gradient( ξ -> rbf(ξ, ℓ), x )
+					T == Float16 || @test G ≈ ForwardDiff.gradient( ξ -> rbf(ξ, ℓ), x )
 					T == Float16 || @test G ≈ aG
 				end
 			end

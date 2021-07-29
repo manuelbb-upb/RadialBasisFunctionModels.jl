@@ -12,8 +12,8 @@ using InteractiveUtils: subtypes
 	mach = RBFMachine(;poly_deg = 1)
 	@test mach.features isa Vector{Vector{Float64}}
 	@test mach.labels isa Vector{Vector{Float64}}
-	@test isnothing(mach.kernel_args)
-	@test mach.kernel_name == :gaussian
+	
+	@test mach.φ isa Gaussian
 
 	@test_throws AssertionError RadialBasisFunctionModels.fit!(mach)
 
@@ -22,7 +22,6 @@ using InteractiveUtils: subtypes
 
 	add_data!( mach, rand(1), rand(1) )
 	@test isnothing(RadialBasisFunctionModels.fit!(mach))
-
 	# do we interpolate?
 	@test mach( mach.features[1] ) ≈ mach.labels[1]
 
@@ -36,7 +35,6 @@ end
 #%%
 @testset "Precision" begin
 	for T in subtypes(AbstractFloat)
-		
 		features = [ rand(T, 2) for i = 1 : 4 ]
 		labels = [ rand(T, 3) for i = 1 : 4 ]
 
@@ -127,7 +125,7 @@ end
 	@test_throws AssertionError RBFMachine( kernel_name = :cubic, poly_deg = 0 )
 
 	for kernel_name in [:gaussian, :inv_multiquadric], poly_deg in [-1,0,1]
-		@test RBFMachine(;kernel_name, poly_deg) isa RBFMachine
+		@test RBFMachine(;kernel_name, poly_deg) isa RBFMachineWithKernel
 	end
 end
 

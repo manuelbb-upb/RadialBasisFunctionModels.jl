@@ -1,11 +1,11 @@
 module RadialBasisFunctionModels #src
 
-using Base: NamedTuple, promote_eltype
+using Base: NamedTuple, promote_eltype, inner_mapslices!
 export RBFModel, RBFInterpolationModel #src
 export Multiquadric, InverseMultiquadric, Gaussian, Cubic, ThinPlateSpline #src
 
 export RBFInterpolator
-export RBFMachine, fit!, add_data!
+export RBFMachine, RBFMachineWithKernel, fit!, add_data!
 
 export auto_grad, auto_jac, grad, jac, eval_and_auto_grad
 export eval_and_auto_jac, eval_and_grad, eval_and_jac
@@ -182,7 +182,7 @@ struct PolySum{
     
     function PolySum( polys :: PS, weights :: WT) where{PS, WT}
         n_out, n_polys = size(weights)
-        @assert npolynomials(polys) == n_polys "Number of polynomials does not macth."
+        @assert npolynomials(polys) == n_polys "Number of polynomials does not match."
         new{PS,WT}(polys, weights, n_out)
     end
 end
@@ -197,15 +197,17 @@ eval_psum( p :: PolySum, x ) = p.weights * p.polys(x)
 # We now have all ingredients to define the model type.
 
 """
-    RBFModel{V}
+    RBFModel{V, RS, PS, M}
 
 * `V` is `true` by default. It can be set to `false` only if the number 
   of outputs is 1. Then scalars are returned.
 
 """
-struct RBFModel{V, 
+struct RBFModel{
+        V, 
         RS <: RBFSum, 
-        PS <: PolySum }
+        PS <: PolySum,
+        M }
     rbf :: RS
     psum :: PS
 
@@ -213,10 +215,16 @@ struct RBFModel{V,
     num_vars :: Int
     num_outputs :: Int
     num_centers :: Int
+
+    meta :: M
+
+    function RBFModel( rbf :: RS, psum :: PS, num_vars, num_outputs, num_centers, meta :: M = nothing; vec_output :: Bool = true) where{RS,PS,M}
+        return new{vec_output, RS,PS, M}(rbf, psum, num_vars, num_outputs, num_centers, meta)
+    end
 end
 
 # We want a model to be displayed in a sensible way:
-function Base.show( io :: IO, mod :: RBFModel{V,RS,PS} ) where {V,RS,PS}
+function Base.show( io :: IO, mod :: RBFModel{V,RS,PS,M} ) where {V,RS,PS,M}
     compact = get(io, :compact, false)
     if compact 
         print(io, "$(mod.num_vars)D$(mod.num_outputs)D-RBFModel{$(V)}")
@@ -243,8 +251,8 @@ function scalar_eval(mod :: RBFModel, x :: AbstractVector{<:Real}, :: Nothing )
 end
 
 ## @doc "Evaluate model `mod :: RBFModel` at vector `x`."
-( mod :: RBFModel{true, RS, PS} where {RS,PS} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = vec_eval(mod,x,ℓ)
-( mod :: RBFModel{false, RS, PS} where {RS,PS} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
+( mod :: RBFModel{true, RS, PS, M} where {RS,PS,M} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = vec_eval(mod,x,ℓ)
+( mod :: RBFModel{false, RS, PS, M} where {RS,PS,M} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
 
 "Evaluate scalar output `ℓ` of model `mod` at vector `x`."
 function (mod :: RBFModel)( x :: AbstractVector{<:Real}, ℓ :: Int)

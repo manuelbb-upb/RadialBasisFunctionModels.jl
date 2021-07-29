@@ -77,7 +77,8 @@ MLJBase.predict(R, X)
 X = [ rand(2) for i = 1 : 10 ]
 Y = [ rand(2) for i = 1 : 10 ]
 
-R = RBFMachine(features = X, labels = Y, kernel_name = :gaussian )
+R = RBFMachine(;features = X, labels = Y, kernel_name = :gaussian )
+R isa RBFMachineWithKernel
 RadialBasisFunctionModels.fit!(R)
 @test(#jl
 R( X[1] ) ≈ Y[1]
