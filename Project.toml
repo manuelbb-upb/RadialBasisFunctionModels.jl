@@ -1,7 +1,7 @@
 name = "RadialBasisFunctionModels"
 uuid = "48790e7e-73b2-491a-afa5-62818081adcb"
 authors = ["Manuel Berkemeier"]
-version = "0.3.0"
+version = "0.3.1-DEV"
 
 [deps]
 ChainRules = "082447d4-558c-5d27-93f4-14fc19e9eca2"
@@ -18,7 +18,7 @@ ThreadSafeDicts = "4239201d-c60e-5e0a-9702-85d713665ba7"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
-ChainRules = "^0.7.64, 0.8"
+ChainRules = "^0.7.64, 0.8, 0.9, 1"
 ForwardDiff = "0.10"
 Lazy = "0.15"
 MLJModelInterface = "1"
