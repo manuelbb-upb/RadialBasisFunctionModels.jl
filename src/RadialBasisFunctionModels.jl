@@ -111,6 +111,7 @@ end
 # part of ``r`` are ``w``, where ``w`` is a vector of length ``N_c`` or a matrix in ``ℝ^{N_c \times k}``
 # where k is the number of outputs.
 # We treat the general case ``k\ge 1`` and always assume ``w`` to be a matrix.
+# (But note, that we actually store the transpose of ``w``).
 
 struct RBFSum{
     KT <: AbstractVector{<:ShiftedKernel},
@@ -131,14 +132,19 @@ function Base.show( io :: IO, rbf :: RBFSum{KT,WT} ) where {KT, WT}
         n_out, n_kernels = size(rbf.weights)
         print(io, "RBFSum\n")
         print(io, "* with $(n_kernels) kernels in an array of type $(KT)\n")
-        print(io, "* and a $(n_kernels)×$(n_out) weight matrix of type $(WT).")
+        print(io, "* and a $(n_out)x$(n_kernels) weight matrix of type $(WT).")
     end        
 end
 
 # We can easily evaluate the `ℓ`-th output of the `RBFPart`:
-@doc "Evaluate outut `ℓ` of RBF sum `rbf::RBFSum`"
+@doc "Evaluate output `ℓ` of RBF sum `rbf::RBFSum`"
 function (rbf :: RBFSum)(x :: AbstractVector, ℓ :: Int)
     return (rbf.weights[ℓ,:]'rbf.kernels(x))[1]
+end
+
+@doc "Evaluate outputs `ℓ` of RBF sum `rbf::RBFSum`"
+function (rbf :: RBFSum)(x :: AbstractVector, ℓ)
+    return rbf.weights[ℓ,:]*rbf.kernels(x)
 end
 
 # The overall output is a vector, and we also get it via matrix multiplication.
@@ -193,6 +199,7 @@ eval_psum( p :: PolySum, x ) = p.weights * p.polys(x)
 (p :: PolySum)(x :: T) where T<:Union{SVector,MVector,SizedVector} = _type_guard( eval_psum(p,x), T, p.num_outputs)
 
 (p :: PolySum)(x,ℓ::Int) = (p.weights[ℓ,:]'p.polys(x))[end]
+(p :: PolySum)(x,ℓ) = p.weights[ℓ,:]*p.polys(x)
 
 # We now have all ingredients to define the model type.
 
@@ -254,15 +261,14 @@ end
 ( mod :: RBFModel{true, RS, PS, M} where {RS,PS,M} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = vec_eval(mod,x,ℓ)
 ( mod :: RBFModel{false, RS, PS, M} where {RS,PS,M} )(x :: AbstractVector{<:Real}, ℓ :: Nothing = nothing ) = scalar_eval(mod,x,ℓ)
 
-"Evaluate scalar output `ℓ` of model `mod` at vector `x`."
-function (mod :: RBFModel)( x :: AbstractVector{<:Real}, ℓ :: Int)
+"Evaluate scalar output(s) `ℓ` of model `mod` at vector `x`."
+function (mod :: RBFModel)( x :: AbstractVector{<:Real}, ℓ)
     return mod.rbf(x, ℓ) + mod.psum( x, ℓ )
 end
 
 ## scalar input
-const NothInt = Union{Nothing,Int}
 
-function (mod :: RBFModel)(x :: Real, ℓ :: NothInt = nothing )
+function (mod :: RBFModel)(x :: Real, ℓ = nothing )
     @assert mod.num_vars == 1 "The model has more than 1 inputs. Provide a vector `x`, not a number."
     mod( [x,], ℓ) 
 end

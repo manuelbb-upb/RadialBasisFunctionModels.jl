@@ -153,25 +153,28 @@ function eval_and_grad( mod :: RBFModel, x :: AbstractVector{<:Real}, ℓ :: Int
 end
 
 # For the jacobian, we use the same trick to save evaluations.
-function jac( rbf :: RBFSum, x :: AbstractVector{<:Real} )
+function jac( rbf :: RBFSum, x :: AbstractVector{<:Real}, rows = nothing )
     offsets, dists = _offsets_and_dists(rbf, x)
-    rbf.weights * jac( rbf.kernels, offsets, dists )
+    isnothing(rows) && return rbf.weights * jac( rbf.kernels, offsets, dists )
+    return rbf.weights[rows, :] * jac( rbf.kernels, offsets, dists )
 end
+
 jacT(rbf :: RBFSum, args... ) = transpose( jac(rbf, args...) )
 
-function jac( psum :: PolySum, x :: AbstractVector{<:Real} )
-    psum.weights * jacobian( psum.polys, x )
+function jac( psum :: PolySum, x :: AbstractVector{<:Real}, rows = nothing )
+    isnothing(rows) && return psum.weights * jacobian( psum.polys, x )
+    return psum.weights[rows, :] * jacobian( psum.polys, x )
 end
 
-function _jac( mod :: RBFModel, x :: AbstractVector{<:Real} )
-    jac( mod.rbf, x ) + jac( mod.psum, x)
+function _jac( mod :: RBFModel, x :: AbstractVector{<:Real}, rows = nothing )
+    jac( mod.rbf, x, rows ) + jac( mod.psum, x, rows)
 end
 
-jac( mod :: RBFModel, x :: AbstractMatrix{<:Real} ) = _jac(mod,x)
-jac( mod :: RBFModel, x :: Vector{<:Real}) = convert(Matrix, _jac(mod,x))
-jac( mod :: RBFModel, x :: SVector{<:Real}) = convert( SMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x) )
-jac( mod :: RBFModel, x :: MVector{<:Real}) = convert( MMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x) )
-jac( mod :: RBFModel, x :: SizedVector{<:Real}) = convert( SizedMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x) )
+jac( mod :: RBFModel, x :: AbstractMatrix{<:Real}, rows = nothing ) = _jac(mod,vec(x),rows)
+jac( mod :: RBFModel, x :: Vector{<:Real}, rows = nothing) = convert(Matrix, _jac(mod,x,rows))
+jac( mod :: RBFModel, x :: SVector{<:Real}, rows = nothing) = convert( SMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x,rows) )
+jac( mod :: RBFModel, x :: MVector{<:Real}, rows = nothing) = convert( MMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x,rows) )
+jac( mod :: RBFModel, x :: SizedVector{<:Real}, rows = nothing) = convert( SizedMatrix{mod.num_outputs, mod_nmu_vars}, _jac(mod,x,rows) )
 
 # As before, define an "evaluate-and-jacobian" function that saves evaluations:
 function eval_and_jac( rbf :: RBFSum, x :: AbstractVector{<:Real} )
