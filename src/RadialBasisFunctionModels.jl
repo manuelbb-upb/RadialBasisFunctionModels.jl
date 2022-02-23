@@ -25,7 +25,9 @@ for V in [:SizedVector, :MVector]
     @eval Base.@propagate_inbounds StaticPolynomials.evaluate( F :: PolynomialSystem, x :: $V , p) = $V( StaticPolynomials._evaluate( F, x , p) ) #src
 end
 
-import Zygote as Zyg
+import Zygote 
+const Zyg = Zygote
+
 using Zygote: Buffer
 
 # TODO also set Flux.trainable to make inner parameters trainable #src
