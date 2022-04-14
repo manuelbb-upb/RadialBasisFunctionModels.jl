@@ -191,11 +191,9 @@ function _poly_matrix( polys, sites )
 end
 
 "Return RBF and Polynomial basis matrices as well as the vector of kernels and the polynomial basis system."
-function get_matrices( φ, sites, centers = []; poly_deg = 1 )
+function get_matrices( φ, sites, centers = sites; poly_deg = 1 )
 
-    rbf_centers = isempty(centers) ? sites : centers
-
-    kernels = make_kernels( φ, rbf_centers )
+    kernels = make_kernels( φ, centers )
     polys = make_polys( sites, poly_deg )
 
     return _rbf_matrix( kernels, sites ), _poly_matrix( polys, sites ), kernels, polys
@@ -468,6 +466,18 @@ function RBFModel(
     if coeff_mode == :auto
         can_interpolate_uniquely = φ isa RadialFunction ? poly_deg >= cpd_order(φ) - 1 : all( poly_deg >= cpd_order(phi) - 1 for phi in φ )
         coeff_mode = num_sites == num_centers && can_interpolate_uniquely ? :interpolation : :ls
+    end
+
+    ## check if there are enough sites for polynomial interpolation 
+    required_sites = binomial( num_vars + poly_deg, num_vars  )
+    if num_sites < required_sites
+        for pd = poly_deg-1:-1:-1
+            if binomial( num_vars + pd, num_vars ) <= num_sites
+                @warn "There are not enough sites for the selected polynomial degree $(poly_deg), using $(pd) instead."
+                poly_deg = pd 
+                break
+            end
+        end
     end
 
     Φ, P, kernels, poly_basis_sys = get_matrices( φ, sites, C; poly_deg )
